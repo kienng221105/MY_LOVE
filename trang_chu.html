@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="vi"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>OurSpace - Hành trình của chúng mình</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&amp;family=Plus+Jakarta+Sans:wght@700;800&amp;family=Quicksand:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-container": "#645a7d",
+                      "on-secondary-fixed": "#1f1635",
+                      "on-primary-fixed-variant": "#4f378a",
+                      "on-background": "#1d1b20",
+                      "inverse-primary": "#cfbcff",
+                      "secondary-fixed-dim": "#cdc0e9",
+                      "secondary": "#63597c",
+                      "outline-variant": "#cbc4d2",
+                      "surface-container": "#f2ecf4",
+                      "on-tertiary-fixed": "#241a00",
+                      "secondary-fixed": "#e9ddff",
+                      "surface-tint": "#6750a4",
+                      "on-surface-variant": "#494551",
+                      "tertiary-fixed-dim": "#e7c365",
+                      "tertiary-container": "#c9a74d",
+                      "secondary-container": "#e1d4fd",
+                      "inverse-surface": "#322f35",
+                      "on-surface": "#1d1b20",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "surface-dim": "#ded8e0",
+                      "on-primary-fixed": "#22005d",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#e9ddff",
+                      "background": "#fdf7ff",
+                      "on-tertiary-fixed-variant": "#594400",
+                      "outline": "#7a7582",
+                      "surface-bright": "#fdf7ff",
+                      "surface-container-highest": "#e6e0e9",
+                      "tertiary": "#765b00",
+                      "on-error": "#ffffff",
+                      "on-tertiary-container": "#503d00",
+                      "on-error-container": "#93000a",
+                      "primary": "#4f378a",
+                      "surface-container-low": "#f8f2fa",
+                      "primary-fixed-dim": "#cfbcff",
+                      "on-secondary-fixed-variant": "#4b4263",
+                      "surface": "#fdf7ff",
+                      "error-container": "#ffdad6",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#f5eff7",
+                      "surface-container-high": "#ece6ee",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e6e0e9",
+                      "primary-container": "#6750a4",
+                      "tertiary-fixed": "#ffdf93",
+                      "on-primary-container": "#e0d2ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "heart-padding-sm": "12px",
+                      "bubble-unit": "8px",
+                      "max-width-desktop": "1200px",
+                      "heart-padding-lg": "40px",
+                      "heart-padding-md": "24px",
+                      "ribbon-gutter": "20px"
+              },
+              "fontFamily": {
+                      "kawaii-heading-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "kawaii-label-bold": [
+                              "Quicksand"
+                      ],
+                      "kawaii-caption-tiny": [
+                              "Quicksand"
+                      ],
+                      "kawaii-body-sweet": [
+                              "Be Vietnam Pro"
+                      ],
+                      "kawaii-title-xl-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "kawaii-title-xl": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "kawaii-heading-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "kawaii-label-bold": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "kawaii-caption-tiny": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "kawaii-body-sweet": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "kawaii-title-xl-mobile": [
+                              "32px",
+                              {
+                                      "lineHeight": "38px",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "kawaii-title-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .petal {
+            position: absolute;
+            background-color: #FFB7B2;
+            border-radius: 50% 0 50% 50%;
+            opacity: 0.7;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.7; }
+            90% { opacity: 0.7; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .floating-heart {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        .gummy-btn {
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(255, 143, 184, 0.3);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .gummy-btn:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.9), 0 8px 16px rgba(255, 143, 184, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen relative overflow-x-hidden font-kawaii-body-sweet">
+<!-- Background Animation -->
+<div class="fixed inset-0 z-[-1] pointer-events-none">
+
+</div>
+<!-- Cherry Blossoms Container -->
+<div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none" id="petals-container"></div>
+<!-- TopNavBar -->
+<nav class="bg-white/60 dark:bg-surface-container/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(255,143,184,0.3)] rounded-full mt-4 mx-auto w-[95%] max-w-desktop sticky top-4 z-50">
+<div class="flex justify-between items-center px-ribbon-gutter h-16">
+<div class="font-kawaii-title-xl text-kawaii-title-xl text-primary dark:text-primary-fixed-dim">
+                OurSpace
+            </div>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-kawaii-heading-lg text-kawaii-heading-lg hover:text-primary hover:scale-105 transition-transform active:scale-95 transition-all" href="#">Hành trình</a>
+<a class="text-on-surface-variant font-medium font-kawaii-heading-lg text-kawaii-heading-lg hover:text-primary hover:scale-105 transition-transform active:scale-95 transition-all" href="#">Kỷ niệm</a>
+<a class="text-on-surface-variant font-medium font-kawaii-heading-lg text-kawaii-heading-lg hover:text-primary hover:scale-105 transition-transform active:scale-95 transition-all" href="#">Thư yêu</a>
+<a class="text-on-surface-variant font-medium font-kawaii-heading-lg text-kawaii-heading-lg hover:text-primary hover:scale-105 transition-transform active:scale-95 transition-all" href="#">Nhật ký</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-primary hover:scale-110 transition-transform active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<button class="text-primary hover:scale-110 transition-transform active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<img alt="Ảnh đại diện cặp đôi" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover" data-alt="A cute illustrated avatar of a couple in a pastel pink and soft white color palette. The art style is kawaii, round, and friendly. The couple is smiling warmly. The lighting is soft and flat, reminiscent of a digital sticker. Super cute Gen Z aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRxaKXqDZQCBmRfZtmezVQC_zXqM0QvyGMl6Yn6rKyWphsFWigTqqxc81tPS0_TInT_DvPBPhfvPXO8mQh1VsmqflGlewGgPMXOEpTVjmI84xd8AuOZmIfRG_4pCZ6K-qz73u4pH_xeyuFQVVCfFc-xv807te5DCh5yiVmXl-E0t8yYAjc4T9qYQQrgdUYI_qODG3EMASR0VY2oAIX3lelPmuFCTHUqOBwN-yVB9jpBvEt1_1_OEC75_wUAwTLLOKuB_ubU5cnFnMH">
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="max-w-desktop mx-auto px-4 md:px-ribbon-gutter pt-12 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
+<!-- Center Bubble -->
+<div class="lg:col-span-8 flex flex-col items-center justify-center min-h-[614px] relative z-10">
+<!-- Mascot Decorations -->
+<img class="absolute -top-10 -left-10 w-24 h-24 floating-heart object-contain" data-alt="A small, cute kawaii style white rabbit sticker with pink cheeks, peeking out from behind a cloud. Soft pastel colors, digital vector art style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3R1g41mJYG_cYrODg6Hn4vvO6Lu8vUVRycRjxrKE_AVX7EVrb993jKzJZjG38Tp7tXXnmzr0ryzLPiD1eL5uNdmR4hTRmHynfeZt7c-XWgV22gF3Wd1BlPTaE-pYV63f6CxOrcMgtLtEASQ8i5VuAr0uPRj-0oel-l5z6t2B_iNl33g9fDK0tw7ELTLujB0TFbIdbbDcJ6ORVJZmqd-ke93S0XedXKJ88scqvSn3mHVrwhK59wkzMl8gNshx8gC14yh5agq397ln8">
+<img class="absolute -bottom-10 -right-10 w-24 h-24 floating-heart object-contain" data-alt="A small, cute kawaii style white cat sticker with a tiny pink bow, sleeping peacefully. Soft pastel colors, digital vector art style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgjjEHn2XT_Tr3e7IDEX_MJWmkVD7Rdpb0bArls1yEaENGt-ujR1nHXuPNyxNNkdGlwryS3U7YqZPEQ4Blx-DurDZVel4G_eoEIJWngM--1CS-CjI3bWtPiByhdMqlfVQGmBQKeUnPRr8BcLP8iAQplVGLX92Q9e0bbW_sXQgt60w8rnkWprSXrFMUFutU3edlXhc11nh6UvwEvcVnZXC0fJJWufH-faQIjRcxkRvMFYGYDkA7DCRpTe02MzuFPhIbAEQjlXBsW48B" style="animation-delay: 1.5s;">
+<div class="bg-white/70 backdrop-blur-xl rounded-[3rem] p-12 text-center shadow-[0_8px_32px_rgba(255,143,184,0.2)] border-2 border-white w-full max-w-2xl relative overflow-hidden">
+<!-- Inner glow -->
+<div class="absolute inset-0 rounded-[3rem] shadow-[inset_0_0_40px_rgba(255,204,226,0.3)] pointer-events-none"></div>
+<h1 class="font-kawaii-heading-lg text-kawaii-heading-lg text-on-surface-variant mb-4">Chúng mình đã bên nhau</h1>
+<div class="font-kawaii-title-xl text-kawaii-title-xl-mobile md:text-kawaii-title-xl text-primary mb-8 tracking-tight">
+<span class="text-5xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-container">1,234</span> ngày yêu
+                </div>
+<div class="flex justify-center gap-4">
+<button class="gummy-btn bg-gradient-to-r from-[#FF8FB8] to-[#FFCCE2] text-white px-8 py-4 rounded-full font-kawaii-label-bold text-kawaii-label-bold flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+                        Thêm Kỷ Niệm
+                    </button>
+</div>
+</div>
+</div>
+<!-- Right Side Widgets -->
+<div class="lg:col-span-4 flex flex-col gap-8">
+<!-- Polaroid Widget -->
+<div class="bg-white p-4 pb-12 rounded-xl shadow-[0_12px_24px_rgba(255,143,184,0.15)] rotate-3 hover:rotate-0 transition-transform duration-300 relative">
+<img class="absolute -top-4 -right-4 w-12 h-12 z-10" data-alt="A cute kawaii style sticker of a sparkly pink star, placed playfully on the corner of a photo frame." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHiigx6qgyjK5palD66LIOR85ql98xhuKbNUWx-QA322SYzcMs7vXKUUrKX2SwXcqoklp-WMbQpaikA4D3-W6CYIHYt7CCC9GBBZfYDUvvgwPgj6dD2cJw3BvWEnbjaHE997LfkyVbaWeqrDhTzi70PadoWzlNUqAIHdCRUbeVY4V4KGRR9i0xr8glf8JG1uKl1ki_PfnFlxEkmwny-rcpgZtmehKIkWJ9Ai20a5hE6h4fhSdK_8r9YlIf1gdFPOfgqTbqJjmzSgzo">
+<div class="aspect-square bg-surface-container rounded-lg mb-4 overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A beautiful, soft-focus candid photo of a couple holding hands in a park filled with cherry blossoms. The lighting is warm golden hour, casting a soft pink hue over the scene. The aesthetic is romantic, gentle, and perfectly fits a kawaii light mode theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYDUTZd9wzkDrLxnBb-cpA6AiNYm8qTUSO6rLPNrJjNBPa1Svl785gY7diqNSK3DnRYXDXN3Lepgv7BiUUNaRxTkbFVz2lYlw0hp34WBU7it2Akc4CGHQRaceBCgC93Qp6s3mD8ZMxvpn2lPiChgOqkOJBnTWJ92WLj-qp7NCEnoblCT6Y6vrrVFSSTMyafc1oUxLQ_rbPigdH5ly97QMmwinWynbsFVRpueCuhMNx6U1hRaKCqkcVBBJYf5p7W813N2wgs2tr4GFR">
+</div>
+<div class="text-center font-kawaii-label-bold text-kawaii-label-bold text-primary">Kỷ niệm hôm nay</div>
+<div class="text-center font-kawaii-caption-tiny text-kawaii-caption-tiny text-on-surface-variant mt-1">Hẹn hò công viên mùa xuân 🌸</div>
+</div>
+<!-- Music Widget -->
+<div class="bg-white/60 backdrop-blur-lg rounded-3xl p-6 shadow-[0_8px_24px_rgba(255,143,184,0.1)] border border-white/50 -rotate-2 hover:rotate-0 transition-transform duration-300">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-kawaii-label-bold text-kawaii-label-bold text-primary">Âm nhạc của chúng mình</h3>
+<span class="material-symbols-outlined text-primary-container floating-heart">music_note</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-full bg-secondary-container animate-[spin_4s_linear_infinite] overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Album cover art featuring a soft pastel gradient of pink and lavender. A cute illustrated vinyl record with a heart in the center. Very kawaii, light and airy aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA501kIVzd0qkCXk5PYP-2Ky003PRA0_6_MLVIpzCNfK5fK9oTuirZKVih5rboHcsF1Un9GfLeYDhJRAXv2zLuBpUHatSFmbT24PazDOzCMv1L9R0v8uXQ__FhlDAWa_YmnN_gVewHXu9rfHA_oSNhlnI3KUzIbWD05JqvnaL1A-vIkxYH5H1mE-xgPL-Cjq8S-RqeK7As-cWIBrIbkfd8oQe2fxIZLeCna9I0nQzm1ispa10xaNtE7OCSkkkn-Nn3eF4vcWvXCbK74">
+</div>
+<div class="flex-1">
+<div class="font-kawaii-label-bold text-kawaii-label-bold text-on-surface mb-1">Perfect (Acoustic)</div>
+<div class="font-kawaii-caption-tiny text-kawaii-caption-tiny text-on-surface-variant">Ed Sheeran</div>
+<div class="mt-2 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-1/3 rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-secondary-fixed dark:bg-on-secondary-fixed-variant w-full rounded-t-xl py-heart-padding-md px-heart-padding-lg flex flex-col md:flex-row justify-between items-center gap-bubble-unit mt-auto relative z-10">
+<div class="font-kawaii-caption-tiny text-kawaii-caption-tiny text-on-secondary-fixed dark:text-secondary-fixed">
+            Được thực hiện với tình yêu bởi OurSpace • 2024
+        </div>
+<div class="flex gap-4">
+<a class="font-kawaii-caption-tiny text-kawaii-caption-tiny text-on-secondary-fixed dark:text-secondary-fixed opacity-80 hover:opacity-100 hover:text-primary transition-opacity" href="#">Điều khoản</a>
+<a class="font-kawaii-caption-tiny text-kawaii-caption-tiny text-on-secondary-fixed dark:text-secondary-fixed opacity-80 hover:opacity-100 hover:text-primary transition-opacity" href="#">Bảo mật</a>
+<a class="font-kawaii-caption-tiny text-kawaii-caption-tiny text-on-secondary-fixed dark:text-secondary-fixed opacity-80 hover:opacity-100 hover:text-primary transition-opacity" href="#">Liên hệ</a>
+</div>
+</footer>
+<script>
+        // Cherry Blossom Petals Animation
+        const petalsContainer = document.getElementById('petals-container');
+        const numPetals = 30;
+
+        for (let i = 0; i < numPetals; i++) {
+            const petal = document.createElement('div');
+            petal.classList.add('petal');
+            
+            // Randomize petal properties
+            const size = Math.random() * 10 + 5; // 5px to 15px
+            const left = Math.random() * 100; // 0% to 100%
+            const duration = Math.random() * 5 + 5; // 5s to 10s
+            const delay = Math.random() * 5; // 0s to 5s
+
+            petal.style.width = `${size}px`;
+            petal.style.height = `${size * 1.5}px`;
+            petal.style.left = `${left}vw`;
+            petal.style.animationDuration = `${duration}s`;
+            petal.style.animationDelay = `${delay}s`;
+
+            petalsContainer.appendChild(petal);
+        }
+    </script>
+</body></html>

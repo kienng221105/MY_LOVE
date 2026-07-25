@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  name             String
+  partnerName      String
+  anniversaryDate  DateTime @default("2023-12-24T00:00:00.000Z")
+  passwordHash     String
+  avatarUrl        String?
+  partnerAvatarUrl String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  diaryEntries     DiaryEntry[]
+  letters          LoveLetter[]
+}
+
+model Album {
+  id        String   @id @default(uuid())
+  name      String
+  coverUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  photos    Photo[]
+}
+
+model Photo {
+  id        String   @id @default(uuid())
+  url       String
+  title     String
+  date      DateTime @default(now())
+  location  String?
+  caption   String?
+  albumId   String?
+  album     Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model MemoryMilestone {
+  id          String   @id @default(uuid())
+  title       String
+  date        DateTime
+  description String
+  location    String?
+  category    String   // first_meet, anniversary, travel, date_night, special
+  imageUrl    String?
+  isFavorite  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model LoveLetter {
+  id          String    @id @default(uuid())
+  sender      String
+  recipient   String
+  title       String
+  content     String
+  sentDate    DateTime  @default(now())
+  openDate    DateTime?
+  isRead      Boolean   @default(false)
+  isFavorite  Boolean   @default(false)
+  bgStyle     String    @default("pink")
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model DiaryEntry {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  mood      String   // happy, romantic, cozy, miss_you
+  weather   String   // sunny, rainy, starry, cloudy
+  imageUrls String[]
+  author    String   @default("Kien")
+  isDraft   Boolean  @default(false)
+  date      DateTime @default(now())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Song {
+  id              String   @id @default(uuid())
+  title           String
+  artist          String
+  albumCover      String?
+  audioUrl        String
+  durationSeconds Int      @default(180)
+  createdAt       DateTime @default(now())
+}
