@@ -1,12 +1,33 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ToggleReactionDto, ReactionTypeValue, ReactionTargetValue } from './dto/toggle-reaction.dto';
+import {
+  ToggleReactionDto,
+  ReactionTypeValue,
+  ReactionTargetValue,
+} from './dto/toggle-reaction.dto';
+
+export interface ReactionUser {
+  id: 'Kien' | 'Love';
+  name: string;
+  short: string;
+  color: 'blue' | 'pink';
+}
+
+export interface ReactionGroup {
+  total: number;
+  mine: boolean;
+  partner: boolean;
+  /** Danh sách người đã thả reaction này (theo thứ tự thả) */
+  users: ReactionUser[];
+}
 
 export interface ReactionSummary {
   total: number;
   byMe: ReactionTypeValue | null;
   byPartner: ReactionTypeValue | null;
-  grouped: Record<ReactionTypeValue, { total: number; mine: boolean; partner: boolean }>;
+  grouped: Record<ReactionTypeValue, ReactionGroup>;
+  /** Danh sách người đã thả bất kỳ reaction nào trên target */
+  reactors: ReactionUser[];
 }
 
 const REACTION_EMOJI: Record<ReactionTypeValue, string> = {
@@ -21,6 +42,35 @@ const PARTNER_OF: Record<'Kien' | 'Love', 'Kien' | 'Love'> = {
   Kien: 'Love',
   Love: 'Kien',
 };
+
+const IDENTITY_OF: Record<
+  'Kien' | 'Love',
+  { name: string; short: string; color: 'blue' | 'pink' }
+> = {
+  Kien: { name: 'Kiên', short: 'K', color: 'blue' },
+  Love: { name: 'Trà', short: 'T', color: 'pink' },
+};
+
+function userFor(id: 'Kien' | 'Love'): ReactionUser {
+  const info = IDENTITY_OF[id];
+  return { id, name: info.name, short: info.short, color: info.color };
+}
+
+function emptySummary(): ReactionSummary {
+  return {
+    total: 0,
+    byMe: null,
+    byPartner: null,
+    grouped: {
+      HEART: { total: 0, mine: false, partner: false, users: [] },
+      CRY: { total: 0, mine: false, partner: false, users: [] },
+      LAUGH: { total: 0, mine: false, partner: false, users: [] },
+      ANGRY: { total: 0, mine: false, partner: false, users: [] },
+      HUG: { total: 0, mine: false, partner: false, users: [] },
+    },
+    reactors: [],
+  };
+}
 
 @Injectable()
 export class ReactionsService {
@@ -82,6 +132,8 @@ export class ReactionsService {
   /**
    * Lấy tổng hợp reactions của một target — dùng khi GET letter/diary
    * trả về cùng response, frontend nhúng vào luôn.
+   *
+   * Sắp xếp reactions theo `createdAt` tăng dần (ai thả trước ở trước)
    */
   async summarize(
     targetType: ReactionTargetValue,
@@ -90,37 +142,33 @@ export class ReactionsService {
   ): Promise<ReactionSummary> {
     const reactions = await this.prisma.reaction.findMany({
       where: this.whereForTarget(targetType, targetId),
+      orderBy: { createdAt: 'asc' },
     });
 
-    const grouped: ReactionSummary['grouped'] = {
-      HEART: { total: 0, mine: false, partner: false },
-      CRY: { total: 0, mine: false, partner: false },
-      LAUGH: { total: 0, mine: false, partner: false },
-      ANGRY: { total: 0, mine: false, partner: false },
-      HUG: { total: 0, mine: false, partner: false },
-    };
-
-    let byMe: ReactionTypeValue | null = null;
-    let byPartner: ReactionTypeValue | null = null;
+    const summary = emptySummary();
 
     for (const r of reactions) {
-      if (!grouped[r.type as ReactionTypeValue]) continue;
-      grouped[r.type as ReactionTypeValue].total += 1;
+      const type = r.type as ReactionTypeValue;
+      if (!summary.grouped[type]) continue;
+      const group = summary.grouped[type];
+      const user = userFor(r.reactionBy as 'Kien' | 'Love');
+      group.total += 1;
+      group.users.push(user);
+      summary.total += 1;
+      // Track người đã thả bất kỳ reaction nào (unique)
+      if (!summary.reactors.find((u) => u.id === user.id)) {
+        summary.reactors.push(user);
+      }
       if (r.reactionBy === me) {
-        grouped[r.type as ReactionTypeValue].mine = true;
-        byMe = r.type as ReactionTypeValue;
+        group.mine = true;
+        summary.byMe = type;
       } else if (r.reactionBy === PARTNER_OF[me]) {
-        grouped[r.type as ReactionTypeValue].partner = true;
-        byPartner = r.type as ReactionTypeValue;
+        group.partner = true;
+        summary.byPartner = type;
       }
     }
 
-    return {
-      total: reactions.length,
-      byMe,
-      byPartner,
-      grouped,
-    };
+    return summary;
   }
 
   async listForTargets(
@@ -134,25 +182,33 @@ export class ReactionsService {
         targetType === 'LETTER'
           ? { letterId: { in: targetIds } }
           : { diaryId: { in: targetIds } },
+      orderBy: { createdAt: 'asc' },
     });
 
     const result: Record<string, ReactionSummary> = {};
     for (const id of targetIds) {
-      result[id] = this.emptySummary();
+      result[id] = emptySummary();
     }
+
     for (const r of reactions) {
       const id = targetType === 'LETTER' ? r.letterId : r.diaryId;
       if (!id || !result[id]) continue;
       const summary = result[id];
       const type = r.type as ReactionTypeValue;
       if (!summary.grouped[type]) continue;
-      summary.grouped[type].total += 1;
+      const group = summary.grouped[type];
+      const user = userFor(r.reactionBy as 'Kien' | 'Love');
+      group.total += 1;
+      group.users.push(user);
       summary.total += 1;
+      if (!summary.reactors.find((u) => u.id === user.id)) {
+        summary.reactors.push(user);
+      }
       if (r.reactionBy === me) {
-        summary.grouped[type].mine = true;
+        group.mine = true;
         summary.byMe = type;
       } else if (r.reactionBy === PARTNER_OF[me]) {
-        summary.grouped[type].partner = true;
+        group.partner = true;
         summary.byPartner = type;
       }
     }
@@ -161,21 +217,6 @@ export class ReactionsService {
 
   static emojiFor(type: ReactionTypeValue): string {
     return REACTION_EMOJI[type];
-  }
-
-  private emptySummary(): ReactionSummary {
-    return {
-      total: 0,
-      byMe: null,
-      byPartner: null,
-      grouped: {
-        HEART: { total: 0, mine: false, partner: false },
-        CRY: { total: 0, mine: false, partner: false },
-        LAUGH: { total: 0, mine: false, partner: false },
-        ANGRY: { total: 0, mine: false, partner: false },
-        HUG: { total: 0, mine: false, partner: false },
-      },
-    };
   }
 
   private whereForTarget(

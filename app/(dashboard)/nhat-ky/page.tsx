@@ -331,7 +331,7 @@ export default function DiaryPage() {
 
               {/* Reactions */}
               <ReactionPicker
-                variant="full"
+                variant="fb"
                 targetType="DIARY"
                 targetId={entry.id}
                 me={me}

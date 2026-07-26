@@ -153,6 +153,7 @@ export default function LettersPage() {
                     <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
                   )}
                   <ReactionPicker
+                    variant="fb"
                     targetType="LETTER"
                     targetId={letter.id}
                     me={me}
@@ -234,7 +235,7 @@ export default function LettersPage() {
                   Cảm xúc của chúng mình:
                 </span>
                 <ReactionPicker
-                  variant="full"
+                  variant="fb"
                   targetType="LETTER"
                   targetId={activeLetter.id}
                   me={me}
