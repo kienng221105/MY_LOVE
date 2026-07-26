@@ -1,4 +1,15 @@
 import 'reflect-metadata';
+import * as path from 'path';
+import * as tsconfigPaths from 'tsconfig-paths';
+
+// Register path aliases for Vercel Serverless Function runtime
+tsconfigPaths.register({
+  baseUrl: path.resolve(__dirname, '..'),
+  paths: {
+    '@/*': ['src/*'],
+  },
+});
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
