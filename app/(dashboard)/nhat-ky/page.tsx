@@ -152,19 +152,41 @@ export default function DiaryPage() {
     }
   };
 
-  const moodEmojis: Record<MoodType, string> = {
-    happy: '🥰 Vui vẻ',
-    romantic: '💖 Lãng mạn',
-    cozy: '☕ Ấm áp',
-    miss_you: '🥺 Nhớ thương',
-  };
+  const moodOptions: { value: MoodType; emoji: string; label: string }[] = [
+    { value: 'happy', emoji: '🥰', label: 'Vui vẻ' },
+    { value: 'romantic', emoji: '💖', label: 'Lãng mạn' },
+    { value: 'cozy', emoji: '☕', label: 'Ấm áp' },
+    { value: 'miss_you', emoji: '🥺', label: 'Nhớ thương' },
+    { value: 'excited', emoji: '🤩', label: 'Hào hứng' },
+    { value: 'proud', emoji: '🥹', label: 'Tự hào' },
+    { value: 'grateful', emoji: '🙏', label: 'Biết ơn' },
+    { value: 'playful', emoji: '😜', label: 'Tinh nghịch' },
+    { value: 'thoughtful', emoji: '💭', label: 'Suy tư' },
+    { value: 'tired', emoji: '😴', label: 'Mệt mỏi' },
+    { value: 'anxious', emoji: '😟', label: 'Lo lắng' },
+    { value: 'heartbroken', emoji: '💔', label: 'Buồn nhiều' },
+  ];
 
-  const weatherIcons: Record<WeatherType, string> = {
-    sunny: '☀️ Nắng đẹp',
-    rainy: '🌧️ Mưa rào',
-    starry: '🌌 Đêm sao',
-    cloudy: '☁️ Mây trôi',
-  };
+  const weatherOptions: { value: WeatherType; emoji: string; label: string }[] = [
+    { value: 'sunny', emoji: '☀️', label: 'Nắng đẹp' },
+    { value: 'partly_cloudy', emoji: '⛅', label: 'Nắng nhẹ mây' },
+    { value: 'cloudy', emoji: '☁️', label: 'Mây trôi' },
+    { value: 'rainy', emoji: '🌧️', label: 'Mưa rào' },
+    { value: 'thunder', emoji: '⛈️', label: 'Mưa giông' },
+    { value: 'snowy', emoji: '❄️', label: 'Tuyết rơi' },
+    { value: 'foggy', emoji: '🌫️', label: 'Sương mù' },
+    { value: 'windy', emoji: '🌬️', label: 'Gió mạnh' },
+    { value: 'starry', emoji: '🌌', label: 'Đêm sao' },
+    { value: 'rainbow', emoji: '🌈', label: 'Cầu vồng' },
+  ];
+
+  const moodEmojis: Record<MoodType, string> = Object.fromEntries(
+    moodOptions.map((m) => [m.value, `${m.emoji} ${m.label}`])
+  ) as Record<MoodType, string>;
+
+  const weatherIcons: Record<WeatherType, string> = Object.fromEntries(
+    weatherOptions.map((w) => [w.value, `${w.emoji} ${w.label}`])
+  ) as Record<WeatherType, string>;
 
   return (
     <main className="space-y-8">
@@ -320,51 +342,71 @@ export default function DiaryPage() {
               </p>
 
               <form onSubmit={handleCreate} className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-heading font-bold text-xs text-on-surface mb-1">
-                      Người viết
-                    </label>
-                    <select
-                      value={author}
-                      onChange={(e) => setAuthor(e.target.value as 'Kien' | 'Love')}
-                      className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-heading font-bold"
-                    >
-                      <option value="Kien">Kiên</option>
-                      <option value="Love">Trà</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block font-heading font-bold text-xs text-on-surface mb-1">
+                    Người viết
+                  </label>
+                  <select
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value as 'Kien' | 'Love')}
+                    className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
+                  >
+                    <option value="Kien">Kiên</option>
+                    <option value="Love">Trà</option>
+                  </select>
+                </div>
 
-                  <div>
-                    <label className="block font-heading font-bold text-xs text-on-surface mb-1">
-                      Tâm trạng
-                    </label>
-                    <select
-                      value={mood}
-                      onChange={(e) => setMood(e.target.value as MoodType)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-heading font-bold"
-                    >
-                      <option value="happy">🥰 Vui vẻ</option>
-                      <option value="romantic">💖 Lãng mạn</option>
-                      <option value="cozy">☕ Ấm áp</option>
-                      <option value="miss_you">🥺 Nhớ thương</option>
-                    </select>
+                <div>
+                  <label className="block font-heading font-bold text-xs text-on-surface mb-2">
+                    Tâm trạng hôm nay của bạn là gì? 💗
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {moodOptions.map((opt) => {
+                      const active = mood === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setMood(opt.value)}
+                          aria-pressed={active}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full border transition-all text-sm font-quicksand font-semibold ${
+                            active
+                              ? 'bg-primary text-on-primary border-primary shadow-md scale-105'
+                              : 'bg-surface-container-low border-primary/20 text-on-surface-variant hover:border-primary/50 hover:bg-primary-container/30'
+                          }`}
+                        >
+                          <span aria-hidden="true">{opt.emoji}</span>
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block font-heading font-bold text-xs text-on-surface mb-1">
-                      Thời tiết
-                    </label>
-                    <select
-                      value={weather}
-                      onChange={(e) => setWeather(e.target.value as WeatherType)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-heading font-bold"
-                    >
-                      <option value="sunny">☀️ Nắng đẹp</option>
-                      <option value="rainy">🌧️ Mưa rào</option>
-                      <option value="starry">🌌 Đêm sao</option>
-                      <option value="cloudy">☁️ Mây trôi</option>
-                    </select>
+                <div>
+                  <label className="block font-heading font-bold text-xs text-on-surface mb-2">
+                    Thời tiết hôm nay thế nào? 🌤️
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {weatherOptions.map((opt) => {
+                      const active = weather === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setWeather(opt.value)}
+                          aria-pressed={active}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full border transition-all text-sm font-quicksand font-semibold ${
+                            active
+                              ? 'bg-secondary text-on-secondary border-secondary shadow-md scale-105'
+                              : 'bg-surface-container-low border-secondary/20 text-on-surface-variant hover:border-secondary/50 hover:bg-secondary-container/30'
+                          }`}
+                        >
+                          <span aria-hidden="true">{opt.emoji}</span>
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

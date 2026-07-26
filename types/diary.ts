@@ -1,5 +1,28 @@
-export type MoodType = 'happy' | 'romantic' | 'cozy' | 'miss_you';
-export type WeatherType = 'sunny' | 'rainy' | 'starry' | 'cloudy';
+export type MoodType =
+  | 'happy'
+  | 'romantic'
+  | 'cozy'
+  | 'miss_you'
+  | 'excited'
+  | 'proud'
+  | 'grateful'
+  | 'playful'
+  | 'tired'
+  | 'thoughtful'
+  | 'anxious'
+  | 'heartbroken';
+
+export type WeatherType =
+  | 'sunny'
+  | 'rainy'
+  | 'starry'
+  | 'cloudy'
+  | 'partly_cloudy'
+  | 'snowy'
+  | 'windy'
+  | 'thunder'
+  | 'foggy'
+  | 'rainbow';
 
 export interface DiaryEntry {
   id: string;
