@@ -28,6 +28,9 @@ async function bootstrapServerless() {
     );
 
     app.use(cookieParser());
+    // Increase body size limit to support base64 image payloads
+    expressApp.use(express.json({ limit: '50mb' }));
+    expressApp.use(express.urlencoded({ limit: '50mb', extended: true }));
     app.enableCors({
       origin: '*',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

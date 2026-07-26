@@ -5,7 +5,7 @@ import { DiaryEntry, MoodType, WeatherType } from '@/types/diary';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { fileToBase64 } from '@/utils/file';
+import { uploadToCloudinary } from '@/utils/file';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DiaryPage() {
@@ -49,10 +49,10 @@ export default function DiaryPage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
-      const base64Results = await Promise.all(
-        filesArray.map((file) => fileToBase64(file))
+      const uploadedUrls = await Promise.all(
+        filesArray.map((file) => uploadToCloudinary(file))
       );
-      setSelectedImages((prev) => [...prev, ...base64Results]);
+      setSelectedImages((prev) => [...prev, ...uploadedUrls]);
     }
   };
 

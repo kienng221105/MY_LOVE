@@ -4,7 +4,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useUpload } from '@/hooks/useUpload';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { fileToBase64 } from '@/utils/file';
+import { uploadToCloudinary } from '@/utils/file';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export function UploadModal() {
@@ -29,11 +29,11 @@ export function UploadModal() {
   };
 
   const handleSave = async () => {
-    const base64Photos = await Promise.all(
+    const cloudinaryPhotos = await Promise.all(
       files.map(async (f) => {
-        const base64 = await fileToBase64(f.file);
+        const url = await uploadToCloudinary(f.file);
         return {
-          url: base64,
+          url,
           title: f.file.name.replace(/\.[^/.]+$/, ''),
           date: new Date().toISOString().split('T')[0],
           caption: 'Kỷ niệm mới thêm',
@@ -41,7 +41,7 @@ export function UploadModal() {
       })
     );
 
-    base64Photos.forEach((photo) => addPhoto(photo));
+    cloudinaryPhotos.forEach((photo) => addPhoto(photo));
 
     showToast('Tải ảnh kỷ niệm thành công! 💖');
     clearAll();
