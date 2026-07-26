@@ -6,6 +6,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { uploadToCloudinary } from '@/utils/file';
+import { formatDateTime } from '@/utils/date';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DiaryPage() {
@@ -148,7 +149,7 @@ export default function DiaryPage() {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 pb-4 pr-8">
                 <div className="flex items-center gap-3">
                   <span className="font-heading font-extrabold text-sm text-primary bg-primary-container/40 px-3.5 py-1.5 rounded-full">
-                    {entry.date}
+                    {formatDateTime(entry.date)}
                   </span>
                   <span className="font-quicksand text-xs font-bold text-on-surface-variant">
                     Viết bởi: <strong className="text-primary">{entry.author === 'Kien' ? 'Kiên' : 'Trà'}</strong>

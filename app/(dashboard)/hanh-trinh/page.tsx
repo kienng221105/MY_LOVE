@@ -5,6 +5,7 @@ import { MemoryMilestone } from '@/types/memory';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { uploadToCloudinary } from '@/utils/file';
+import { formatDate } from '@/utils/date';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function JourneyPage() {
@@ -56,7 +57,7 @@ export default function JourneyPage() {
       location,
       description,
       category,
-      imageUrl: selectedImages[0] || '/hanh_trinh.png',
+      imageUrl: selectedImages[0] || '',
       imageUrls: selectedImages,
     });
 
@@ -138,7 +139,7 @@ export default function JourneyPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <span className="inline-block px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-heading font-bold text-xs mb-1">
-                        {m.date}
+                        {formatDate(m.date)}
                       </span>
                       <h3 className="font-heading font-extrabold text-lg sm:text-xl text-on-surface">
                         {m.title}

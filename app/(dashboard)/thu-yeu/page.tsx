@@ -6,6 +6,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatDate } from '@/utils/date';
 
 export default function LettersPage() {
   const { letters, addLetter, markLetterRead } = useDataStore();
@@ -88,7 +89,7 @@ export default function LettersPage() {
                   Từ: {letter.sender}
                 </span>
                 <span className="font-quicksand text-xs text-outline font-semibold">
-                  {letter.sentDate}
+                  {formatDate(letter.sentDate)}
                 </span>
               </div>
 
