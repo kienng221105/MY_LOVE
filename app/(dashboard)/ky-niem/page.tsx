@@ -6,6 +6,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatDate } from '@/utils/date';
 
 export default function GalleryPage() {
   const { photos, albums, deletePhoto } = useDataStore();
@@ -85,7 +86,7 @@ export default function GalleryPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-on-surface/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end text-white">
                   <p className="font-heading font-bold text-sm truncate">{photo.title}</p>
-                  <p className="font-quicksand text-xs opacity-90">{photo.date}</p>
+                  <p className="font-quicksand text-xs opacity-90">{formatDate(photo.date)}</p>
                 </div>
               </div>
             </motion.div>
@@ -137,7 +138,7 @@ export default function GalleryPage() {
               <div className="w-full md:w-80 flex flex-col justify-between space-y-4">
                 <div className="space-y-3">
                   <span className="inline-block px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-heading font-bold text-xs">
-                    {selectedPhoto.date}
+                    {formatDate(selectedPhoto.date)}
                   </span>
                   <h3 className="font-heading font-extrabold text-xl text-primary">
                     {selectedPhoto.title}
