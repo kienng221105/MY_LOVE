@@ -29,8 +29,9 @@ async function bootstrapServerless() {
 
     app.use(cookieParser());
     app.enableCors({
-      origin: true,
-      credentials: true,
+      origin: '*',
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      allowedHeaders: '*',
     });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
