@@ -1,5 +1,5 @@
 // Cloudinary unsigned upload preset
-const CLOUDINARY_CLOUD_NAME = 'dkienng221105';
+const CLOUDINARY_CLOUD_NAME = 'h05x5a78';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspace_unsigned';
 
 /**
