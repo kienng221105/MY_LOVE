@@ -29,6 +29,7 @@ interface DataStore {
   deleteDiaryEntry: (id: string) => Promise<void>;
 
   initData: () => Promise<void>;
+  clearLocalCache: () => void;
 }
 
 const STORAGE_KEY = 'ourspace_app_data';
@@ -41,23 +42,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   diaryEntries: [],
 
   initData: async () => {
-    // 1. Fast initial load from LocalStorage cache
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          set({
-            photos: parsed.photos || [],
-            memories: parsed.memories || [],
-            letters: parsed.letters || [],
-            diaryEntries: parsed.diaryEntries || [],
-          });
-        } catch (e) {}
-      }
-    }
-
-    // 2. Sync and Auto-migrate local data to Neon Database Cloud API
+    // Fetch directly from Neon Database Cloud API (Single Source of Truth)
     try {
       const [apiPhotos, apiMemories, apiLetters, apiDiary] = await Promise.all([
         GalleryService.getPhotos(),
@@ -66,101 +51,59 @@ export const useDataStore = create<DataStore>((set, get) => ({
         DiaryService.getEntries(),
       ]);
 
-      const currentLocal = get();
-
-      // Auto-migrate photos if Cloud DB is empty
-      if (apiPhotos.length === 0 && currentLocal.photos.length > 0) {
-        for (const p of currentLocal.photos) {
-          if (p.url && !p.url.startsWith('blob:')) {
-            await GalleryService.addPhoto({
-              url: p.url,
-              title: p.title || 'Kỷ niệm',
-              date: p.date || new Date().toISOString().split('T')[0],
-              caption: p.caption || '',
-            });
-          }
-        }
-      }
-
-      // Auto-migrate letters if Cloud DB is empty
-      if (apiLetters.length === 0 && currentLocal.letters.length > 0) {
-        for (const l of currentLocal.letters) {
-          await LettersService.createLetter({
-            sender: l.sender || 'Kiên',
-            recipient: l.recipient || 'Trà',
-            title: l.title || '',
-            content: l.content || '',
-            sentDate: l.sentDate || new Date().toISOString().split('T')[0],
-            isRead: l.isRead ?? false,
-            bgStyle: l.bgStyle || 'pink',
-          });
-        }
-      }
-
-      // Auto-migrate diary entries if Cloud DB is empty
-      if (apiDiary.length === 0 && currentLocal.diaryEntries.length > 0) {
-        for (const d of currentLocal.diaryEntries) {
-          await DiaryService.createEntry({
-            title: d.title || '',
-            content: d.content || '',
-            mood: d.mood || 'romantic',
-            weather: d.weather || 'sunny',
-            author: d.author || 'Kien',
-            date: d.date || new Date().toISOString().split('T')[0],
-            imageUrls: d.imageUrls || [],
-          });
-        }
-      }
-
-      // Auto-migrate memories if Cloud DB is empty
-      if (apiMemories.length === 0 && currentLocal.memories.length > 0) {
-        for (const m of currentLocal.memories) {
-          await MemoriesService.addMemory({
-            title: m.title || 'Cột mốc mới',
-            date: m.date || new Date().toISOString().split('T')[0],
-            description: m.description || '',
-            location: m.location || '',
-            category: m.category || 'special',
-            imageUrl: m.imageUrl || '',
-          });
-        }
-      }
-
-      // Final fetch from Cloud DB
-      const [finalPhotos, finalMemories, finalLetters, finalDiary] = await Promise.all([
-        GalleryService.getPhotos(),
-        MemoriesService.getMemories(),
-        LettersService.getLetters(),
-        DiaryService.getEntries(),
-      ]);
-
       set({
-        photos: finalPhotos.length > 0 ? finalPhotos : currentLocal.photos,
-        memories: finalMemories.length > 0 ? finalMemories : currentLocal.memories,
-        letters: finalLetters.length > 0 ? finalLetters : currentLocal.letters,
-        diaryEntries: finalDiary.length > 0 ? finalDiary : currentLocal.diaryEntries,
+        photos: apiPhotos,
+        memories: apiMemories,
+        letters: apiLetters,
+        diaryEntries: apiDiary,
       });
 
-      saveToStorage(get());
+      saveToStorage({
+        photos: apiPhotos,
+        memories: apiMemories,
+        letters: apiLetters,
+        diaryEntries: apiDiary,
+      });
     } catch (e) {
-      console.warn('Backend API offline, operating in LocalStorage mode');
+      console.warn('Backend API offline, falling back to LocalStorage');
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            set({
+              photos: parsed.photos || [],
+              memories: parsed.memories || [],
+              letters: parsed.letters || [],
+              diaryEntries: parsed.diaryEntries || [],
+            });
+          } catch (err) {}
+        }
+      }
     }
   },
 
-  addPhoto: async (photoData) => {
-    const localPhoto: Photo = {
-      ...photoData,
-      id: `photo_${Date.now()}`,
-    };
-    const updated = [localPhoto, ...get().photos];
-    set({ photos: updated });
-    saveToStorage(get());
+  clearLocalCache: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('ourspace_app_data');
+      localStorage.removeItem('ourspace_auth');
+      localStorage.removeItem('ourspace_token');
+      localStorage.removeItem('ourspace_magic_phrase');
+    }
+    set({
+      photos: [],
+      memories: [],
+      letters: [],
+      diaryEntries: [],
+    });
+  },
 
-    // Sync to Cloud DB
+  addPhoto: async (photoData) => {
     const apiResult = await GalleryService.addPhoto(photoData);
     if (apiResult) {
-      const synced = get().photos.map((p) => (p.id === localPhoto.id ? apiResult : p));
-      set({ photos: synced });
+      const updated = [apiResult, ...get().photos];
+      set({ photos: updated });
       saveToStorage(get());
     }
   },
@@ -173,19 +116,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   addMemory: async (memoryData) => {
-    const localMemory: MemoryMilestone = {
-      ...memoryData,
-      id: `memory_${Date.now()}`,
-    };
-    const updated = [localMemory, ...get().memories];
-    set({ memories: updated });
-    saveToStorage(get());
-
-    // Sync to Cloud DB
     const apiResult = await MemoriesService.addMemory(memoryData);
     if (apiResult) {
-      const synced = get().memories.map((m) => (m.id === localMemory.id ? apiResult : m));
-      set({ memories: synced });
+      const updated = [apiResult, ...get().memories];
+      set({ memories: updated });
       saveToStorage(get());
     }
   },
@@ -199,19 +133,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   addLetter: async (letterData) => {
-    const localLetter: LoveLetter = {
-      ...letterData,
-      id: `letter_${Date.now()}`,
-    };
-    const updated = [localLetter, ...get().letters];
-    set({ letters: updated });
-    saveToStorage(get());
-
-    // Sync to Cloud DB
     const apiResult = await LettersService.createLetter(letterData);
     if (apiResult) {
-      const synced = get().letters.map((l) => (l.id === localLetter.id ? apiResult : l));
-      set({ letters: synced });
+      const updated = [apiResult, ...get().letters];
+      set({ letters: updated });
       saveToStorage(get());
     }
   },
@@ -226,19 +151,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   addDiaryEntry: async (entryData) => {
-    const localEntry: DiaryEntry = {
-      ...entryData,
-      id: `diary_${Date.now()}`,
-    };
-    const updated = [localEntry, ...get().diaryEntries];
-    set({ diaryEntries: updated });
-    saveToStorage(get());
-
-    // Sync to Cloud DB
     const apiResult = await DiaryService.createEntry(entryData);
     if (apiResult) {
-      const synced = get().diaryEntries.map((d) => (d.id === localEntry.id ? apiResult : d));
-      set({ diaryEntries: synced });
+      const updated = [apiResult, ...get().diaryEntries];
+      set({ diaryEntries: updated });
       saveToStorage(get());
     }
   },
