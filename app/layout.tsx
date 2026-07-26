@@ -28,6 +28,11 @@ const quicksand = Quicksand({
 export const metadata: Metadata = {
   title: 'OurSpace 💕 - Cánh cửa tình yêu của chúng mình',
   description: 'Góc nhỏ riêng tư bí mật dành cho hai đứa.',
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

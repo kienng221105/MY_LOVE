@@ -31,9 +31,11 @@ export function HeaderNav() {
         
         {/* Logo / Brand Name */}
         <Link href="/home" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-            <span className="material-symbols-outlined text-xl">favorite</span>
-          </div>
+          <img
+            src="/logo.svg"
+            alt="OurSpace Logo"
+            className="w-9 h-9 group-hover:scale-110 transition-transform drop-shadow-sm"
+          />
           <span className="font-heading font-extrabold text-lg text-primary tracking-tight">
             OurSpace <span className="text-xs font-normal text-outline">💕 Kiên & Trà</span>
           </span>
