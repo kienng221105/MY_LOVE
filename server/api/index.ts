@@ -17,8 +17,6 @@ import { AppModule } from '../src/app.module';
 import express from 'express';
 import cookieParser = require('cookie-parser');
 
-const server = express();
-
 let cachedApp: any;
 
 async function bootstrapServerless() {
@@ -53,6 +51,10 @@ async function bootstrapServerless() {
 }
 
 export default async function handler(req: any, res: any) {
+  // Rewrite root URL '/' or '/favicon.ico' to '/api' so root requests return 200 OK health status
+  if (req.url === '/' || req.url === '' || req.url === '/favicon.ico') {
+    req.url = '/api';
+  }
   const app = await bootstrapServerless();
   return app(req, res);
 }
