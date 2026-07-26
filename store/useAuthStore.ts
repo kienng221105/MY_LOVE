@@ -84,11 +84,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // Sync new password to Neon Cloud DB
     try {
       await apiClient.post('/auth/change-password', {
-        oldPasscode: get().magicPhrase || '24122023',
         newPasscode: cleanPass,
       });
     } catch (e) {
-      console.warn('Could not sync password change to API backend');
+      console.warn('Could not sync password change to API backend', e);
     }
   },
 }));
