@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoveLetter } from '@/types/letter';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
@@ -20,15 +20,19 @@ export default function LettersPage() {
   const [activeLetter, setActiveLetter] = useState<LoveLetter | null>(null);
   const { isWriteLetterOpen, openWriteLetter, closeWriteLetter } = useDialogStore();
   const { showToast } = useNotificationStore();
-  const { me } = useReactionContext();
+  const { me, myName } = useReactionContext();
 
-  // Form state
-  const [sender, setSender] = useState('Kiên');
+  // Form state — sender luôn theo identity hiện tại
+  const [sender, setSender] = useState(myName);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [openDate, setOpenDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
+
+  useEffect(() => {
+    setSender(myName);
+  }, [myName]);
 
   const filteredLetters = letters.filter((letter) =>
     isDateInRange(letter.sentDate, dateRange)

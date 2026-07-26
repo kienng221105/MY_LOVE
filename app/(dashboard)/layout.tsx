@@ -3,6 +3,7 @@
 import { HeaderNav } from '@/components/common/HeaderNav';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDataStore } from '@/store/useDataStore';
+import { useIdentityStore } from '@/store/useIdentityStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -27,6 +28,9 @@ export default function DashboardLayout({
         }
       }
     });
+    // Identity store tự hydrate từ localStorage qua getState() lazy init,
+    // nhưng gọi 1 lần để chắc chắn sync khi mount
+    useIdentityStore.getState();
     void initData();
   }, [router, checkSession, initData]);
 

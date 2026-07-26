@@ -1,30 +1,31 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
-import { resolveReactionBy } from '@/utils/reaction';
+import { useIdentityStore, IDENTITIES, IdentityId } from '@/store/useIdentityStore';
 
-export type ReactionBy = 'Kien' | 'Love';
+export type ReactionBy = IdentityId;
 
 export interface ReactionContext {
   me: ReactionBy;
   partnerName: string;
   myName: string;
+  partner: ReactionBy;
 }
 
 /**
- * Xác định "me" là Kiên hay Trà dựa trên user đang đăng nhập.
- * Fallback an toàn: nếu không xác định được thì mặc định 'Kien'.
+ * Xác định "me" là Kiên hay Trà dựa trên IdentityStore (người dùng chọn).
+ * Có thể chuyển đổi qua lại bất kỳ lúc nào bằng IdentitySwitcher.
  */
 export function useReactionContext(): ReactionContext {
-  const user = useAuthStore((s) => s.user);
+  const me = useIdentityStore((s) => s.identity);
 
   return useMemo(() => {
-    const me = resolveReactionBy(user?.name || '');
+    const partner: ReactionBy = me === 'Kien' ? 'Love' : 'Kien';
     return {
       me,
-      myName: me === 'Kien' ? 'Kiên' : 'Trà',
-      partnerName: me === 'Kien' ? 'Trà' : 'Kiên',
+      myName: IDENTITIES[me].displayName,
+      partnerName: IDENTITIES[partner].displayName,
+      partner,
     };
-  }, [user]);
+  }, [me]);
 }

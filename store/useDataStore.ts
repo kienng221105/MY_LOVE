@@ -3,11 +3,12 @@ import { Photo, Album } from '@/types/gallery';
 import { MemoryMilestone } from '@/types/memory';
 import { LoveLetter } from '@/types/letter';
 import { DiaryEntry } from '@/types/diary';
-import { ReactionSummary } from '@/types/reaction';
+import { ReactionSummary, emptyReactionSummary } from '@/types/reaction';
 import { GalleryService } from '@/services/gallery.service';
 import { MemoriesService } from '@/services/memories.service';
 import { LettersService } from '@/services/letters.service';
 import { DiaryService } from '@/services/diary.service';
+import { useIdentityStore, IdentityId } from '@/store/useIdentityStore';
 import { resolveReactionBy } from '@/utils/reaction';
 
 interface DataStore {
@@ -58,8 +59,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
     const fallback = readCacheFromStorage();
     const photos = pickValue(photosResult, fallback.photos);
     const memories = pickValue(memoriesResult, fallback.memories);
-    const letters = pickValue(lettersResult, fallback.letters);
-    const diaryEntries = pickValue(diaryResult, fallback.diaryEntries);
+    // Với letters/diary: cache cũ có thể thiếu reactions → tự bổ sung fallback
+    const letters = normalizeLetterReactions(
+      pickValue(lettersResult, fallback.letters)
+    );
+    const diaryEntries = normalizeDiaryReactions(
+      pickValue(diaryResult, fallback.diaryEntries)
+    );
 
     set({ photos, memories, letters, diaryEntries });
     saveToStorage({ photos, memories, letters, diaryEntries });
@@ -203,13 +209,19 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 }));
 
-function getCurrentMe(): 'Kien' | 'Love' {
+function getCurrentMe(): IdentityId {
+  // Ưu tiên IdentityStore (sync trong memory)
+  try {
+    const storeId = useIdentityStore.getState().identity;
+    if (storeId) return storeId;
+  } catch {}
+  // Fallback localStorage
   if (typeof window === 'undefined') return 'Kien';
   try {
-    const stored = localStorage.getItem('ourspace_user_name');
-    if (stored) {
-      return resolveReactionBy(stored);
-    }
+    const stored = localStorage.getItem('ourspace_identity');
+    if (stored === 'Kien' || stored === 'Love') return stored;
+    const userName = localStorage.getItem('ourspace_user_name');
+    if (userName) return resolveReactionBy(userName);
   } catch {}
   return 'Kien';
 }
@@ -217,6 +229,24 @@ function getCurrentMe(): 'Kien' | 'Love' {
 function pickValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
   if (result.status === 'fulfilled') return result.value;
   return fallback;
+}
+
+/**
+ * Cache cũ có thể không có field `reactions`. Bổ sung giá trị rỗng
+ * để ReactionPicker không crash khi đọc grouped.
+ */
+function normalizeLetterReactions(items: LoveLetter[]): LoveLetter[] {
+  return items.map((item) => ({
+    ...item,
+    reactions: item.reactions ?? emptyReactionSummary(),
+  }));
+}
+
+function normalizeDiaryReactions(items: DiaryEntry[]): DiaryEntry[] {
+  return items.map((item) => ({
+    ...item,
+    reactions: item.reactions ?? emptyReactionSummary(),
+  }));
 }
 
 function readCacheFromStorage() {

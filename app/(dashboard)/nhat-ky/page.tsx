@@ -35,13 +35,18 @@ export default function DiaryPage() {
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<MoodType>('happy');
   const [weather, setWeather] = useState<WeatherType>('sunny');
-  const [author, setAuthor] = useState<'Kien' | 'Love'>('Kien');
+  const [author, setAuthor] = useState<'Kien' | 'Love'>(me);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
   const [activeZoomImageCaption, setActiveZoomImageCaption] = useState<string | undefined>(undefined);
   const [activeZoomImageDate, setActiveZoomImageDate] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
+
+  // Author luôn đồng bộ với identity hiện tại
+  useEffect(() => {
+    setAuthor(me);
+  }, [me]);
 
   // Load draft from LocalStorage on mount
   useEffect(() => {

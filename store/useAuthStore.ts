@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { User } from '@/types/auth';
 import { mockUser } from '@/mock/user';
 import { apiClient } from '@/services/api';
+import { useIdentityStore, IdentityId } from '@/store/useIdentityStore';
+import { resolveReactionBy } from '@/utils/reaction';
 
 interface AuthStore {
   isAuthenticated: boolean;
@@ -17,6 +19,20 @@ function persistUserName(name: string | undefined) {
   if (typeof window === 'undefined' || !name) return;
   try {
     localStorage.setItem('ourspace_user_name', name);
+  } catch {}
+}
+
+/**
+ * Nếu user chưa từng chọn identity thủ công, đặt mặc định theo user.name.
+ * Nếu đã chọn rồi thì giữ nguyên (cho phép override).
+ */
+function suggestIdentityFromUser(name: string | undefined) {
+  if (typeof window === 'undefined') return;
+  try {
+    const manualPicked = localStorage.getItem('ourspace_identity_manual');
+    if (manualPicked === 'true') return;
+    const id: IdentityId = resolveReactionBy(name || '');
+    useIdentityStore.getState().setIdentity(id);
   } catch {}
 }
 
@@ -58,6 +74,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 const safeUser = extractUser(data.user) ?? mockUser;
       set({ isAuthenticated: true, user: safeUser, magicPhrase: inputClean });
       persistUserName(safeUser.name);
+      suggestIdentityFromUser(safeUser.name);
       return true;
       }
     } catch (e) {
@@ -78,6 +95,7 @@ const safeUser = extractUser(data.user) ?? mockUser;
       }
       set({ isAuthenticated: true, user: mockUser });
       persistUserName(mockUser.name);
+      suggestIdentityFromUser(mockUser.name);
       return true;
     }
     return false;
@@ -91,6 +109,7 @@ const safeUser = extractUser(data.user) ?? mockUser;
       localStorage.removeItem('ourspace_avatar_kien');
       localStorage.removeItem('ourspace_avatar_tra');
       localStorage.removeItem('ourspace_user_name');
+      localStorage.removeItem('ourspace_identity_manual');
     }
     set({ isAuthenticated: false, user: null });
   },
@@ -116,10 +135,12 @@ const safeUser = extractUser(data.user) ?? mockUser;
       const user = extractUser(res.data?.data) ?? mockUser;
       set({ isAuthenticated: true, user });
       persistUserName(user.name);
+      suggestIdentityFromUser(user.name);
     } catch (err) {
       console.warn('Failed to refresh /auth/me, keeping offline session:', err);
       set({ isAuthenticated: true, user: mockUser });
       persistUserName(mockUser.name);
+      suggestIdentityFromUser(mockUser.name);
     }
   },
   setMagicPhrase: async (newPhrase: string) => {

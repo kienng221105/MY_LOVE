@@ -6,6 +6,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { AvatarCropModal } from '@/components/common/AvatarCropModal';
+import { IdentitySwitcher } from '@/components/common/IdentitySwitcher';
 import { fileToBase64 } from '@/utils/file';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -286,6 +287,9 @@ export default function HomePage() {
           </div>
         </div>
       </motion.section>
+
+      {/* Identity Switcher — Phân quyền người dùng */}
+      <IdentitySwitcher variant="box" />
 
       {/* Quick Action Bubbles */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">

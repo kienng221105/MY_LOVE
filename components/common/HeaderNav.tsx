@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDialogStore } from '@/store/useDialogStore';
+import { IdentitySwitcher } from '@/components/common/IdentitySwitcher';
 import { motion } from 'framer-motion';
 
 const navItems = [
@@ -71,8 +72,12 @@ export function HeaderNav() {
           })}
         </nav>
 
-        {/* Right Actions: Password Change & Logout */}
+        {/* Right Actions: Identity, Password Change & Logout */}
         <div className="flex items-center gap-2">
+          <div className="hidden sm:block">
+            <IdentitySwitcher variant="compact" />
+          </div>
+
           <button
             onClick={openChangePassword}
             className="p-2 rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
