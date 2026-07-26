@@ -342,71 +342,53 @@ export default function DiaryPage() {
               </p>
 
               <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block font-heading font-bold text-xs text-on-surface mb-1">
-                    Người viết
-                  </label>
-                  <select
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value as 'Kien' | 'Love')}
-                    className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
-                  >
-                    <option value="Kien">Kiên</option>
-                    <option value="Love">Trà</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-heading font-bold text-xs text-on-surface mb-2">
-                    Tâm trạng hôm nay của bạn là gì? 💗
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {moodOptions.map((opt) => {
-                      const active = mood === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setMood(opt.value)}
-                          aria-pressed={active}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full border transition-all text-sm font-quicksand font-semibold ${
-                            active
-                              ? 'bg-primary text-on-primary border-primary shadow-md scale-105'
-                              : 'bg-surface-container-low border-primary/20 text-on-surface-variant hover:border-primary/50 hover:bg-primary-container/30'
-                          }`}
-                        >
-                          <span aria-hidden="true">{opt.emoji}</span>
-                          <span>{opt.label}</span>
-                        </button>
-                      );
-                    })}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-heading font-bold text-xs text-on-surface mb-1">
+                      Người viết
+                    </label>
+                    <select
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value as 'Kien' | 'Love')}
+                      className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
+                    >
+                      <option value="Kien">Kiên</option>
+                      <option value="Love">Trà</option>
+                    </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-heading font-bold text-xs text-on-surface mb-2">
-                    Thời tiết hôm nay thế nào? 🌤️
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {weatherOptions.map((opt) => {
-                      const active = weather === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setWeather(opt.value)}
-                          aria-pressed={active}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full border transition-all text-sm font-quicksand font-semibold ${
-                            active
-                              ? 'bg-secondary text-on-secondary border-secondary shadow-md scale-105'
-                              : 'bg-surface-container-low border-secondary/20 text-on-surface-variant hover:border-secondary/50 hover:bg-secondary-container/30'
-                          }`}
-                        >
-                          <span aria-hidden="true">{opt.emoji}</span>
-                          <span>{opt.label}</span>
-                        </button>
-                      );
-                    })}
+                  <div>
+                    <label className="block font-heading font-bold text-xs text-on-surface mb-1">
+                      Tâm trạng
+                    </label>
+                    <select
+                      value={mood}
+                      onChange={(e) => setMood(e.target.value as MoodType)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
+                    >
+                      {moodOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.emoji} {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-heading font-bold text-xs text-on-surface mb-1">
+                      Thời tiết
+                    </label>
+                    <select
+                      value={weather}
+                      onChange={(e) => setWeather(e.target.value as WeatherType)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
+                    >
+                      {weatherOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.emoji} {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
