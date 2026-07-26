@@ -130,12 +130,10 @@ export class ReactionsService {
   ): Promise<Record<string, ReactionSummary>> {
     if (targetIds.length === 0) return {};
     const reactions = await this.prisma.reaction.findMany({
-      where: {
-        ...this.whereForTarget(targetType, '__never__'),
-        OR: targetIds.map((id) =>
-          targetType === 'LETTER' ? { letterId: id } : { diaryId: id }
-        ),
-      },
+      where:
+        targetType === 'LETTER'
+          ? { letterId: { in: targetIds } }
+          : { diaryId: { in: targetIds } },
     });
 
     const result: Record<string, ReactionSummary> = {};
