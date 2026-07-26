@@ -12,11 +12,13 @@ export class AuthService {
   ) {}
 
   private async getOrCreateUser() {
-    try {
-      let user = await this.prisma.user.findFirst();
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
+    let user = await this.prisma.user.findFirst().catch(() => null);
+    if (!user) {
+      try {
+        user = await this.prisma.user.upsert({
+          where: { id: 'user_1' },
+          update: {},
+          create: {
             id: 'user_1',
             name: 'Kiên',
             partnerName: 'Trà',
@@ -26,19 +28,19 @@ export class AuthService {
             partnerAvatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
           },
         });
+      } catch (e) {
+        user = {
+          id: 'user_1',
+          name: 'Kiên',
+          partnerName: 'Trà',
+          passwordHash: '24122023',
+          anniversaryDate: new Date('2023-12-24'),
+          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          partnerAvatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
+        };
       }
-      return user;
-    } catch {
-      return {
-        id: 'user_1',
-        name: 'Kiên',
-        partnerName: 'Trà',
-        passwordHash: '24122023',
-        anniversaryDate: new Date('2023-12-24'),
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        partnerAvatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
-      };
     }
+    return user;
   }
 
   async login(loginDto: LoginDto) {
@@ -71,13 +73,23 @@ export class AuthService {
 
   async changePassword(changePasswordDto: ChangePasswordDto) {
     const newPass = changePasswordDto.newPasscode.trim();
+    const user = await this.getOrCreateUser();
+
     try {
-      const user = await this.getOrCreateUser();
-      await this.prisma.user.update({
+      await this.prisma.user.upsert({
         where: { id: user.id },
-        data: { passwordHash: newPass },
+        update: { passwordHash: newPass },
+        create: {
+          id: 'user_1',
+          name: 'Kiên',
+          partnerName: 'Trà',
+          passwordHash: newPass,
+          anniversaryDate: new Date('2023-12-24'),
+        },
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to update password in database:', err);
+    }
 
     return {
       message: 'Cập nhật mật mã bí mật thành công! 💖',
