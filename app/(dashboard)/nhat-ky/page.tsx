@@ -8,6 +8,11 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 import { uploadImageFile, isHttpUpstreamUrl } from '@/utils/file';
 import { formatDateTime } from '@/utils/date';
 import { motion, AnimatePresence } from 'framer-motion';
+import DateRangeFilter, {
+  EMPTY_DATE_RANGE,
+  isDateInRange,
+  type DateRangeFilterValue,
+} from '@/components/common/DateRangeFilter';
 
 interface PendingImage {
   id: string;
@@ -30,6 +35,7 @@ export default function DiaryPage() {
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
 
   // Load draft from LocalStorage on mount
   useEffect(() => {
@@ -188,6 +194,10 @@ export default function DiaryPage() {
     weatherOptions.map((w) => [w.value, `${w.emoji} ${w.label}`])
   ) as Record<WeatherType, string>;
 
+  const filteredDiaryEntries = diaryEntries.filter((entry) =>
+    isDateInRange(entry.date, dateRange)
+  );
+
   return (
     <main className="space-y-8">
       {/* Header */}
@@ -211,10 +221,18 @@ export default function DiaryPage() {
         </button>
       </div>
 
+      <DateRangeFilter
+        value={dateRange}
+        onChange={setDateRange}
+        totalCount={diaryEntries.length}
+        filteredCount={filteredDiaryEntries.length}
+      />
+
       {/* Diary Feed or Empty State */}
       {diaryEntries.length > 0 ? (
+        filteredDiaryEntries.length > 0 ? (
         <div className="space-y-6">
-          {diaryEntries.map((entry, idx) => (
+          {filteredDiaryEntries.map((entry, idx) => (
             <motion.article
               key={entry.id}
               initial={{ opacity: 0, y: 20 }}
@@ -298,6 +316,17 @@ export default function DiaryPage() {
             </motion.article>
           ))}
         </div>
+        ) : (
+          <div className="glass-panel p-12 rounded-3xl border border-dashed border-primary/30 text-center space-y-3 max-w-md mx-auto my-8">
+            <div className="w-14 h-14 rounded-full bg-primary-container text-primary flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-3xl">event_busy</span>
+            </div>
+            <h3 className="font-heading font-bold text-base text-primary">Không có nhật ký trong khoảng thời gian này</h3>
+            <p className="font-quicksand text-xs text-on-surface-variant font-semibold">
+              Thử chọn khoảng khác hoặc bấm <em>Tất cả</em> để xem toàn bộ.
+            </p>
+          </div>
+        )
       ) : (
         <div className="glass-panel p-12 rounded-3xl border border-dashed border-primary/30 text-center space-y-4 max-w-md mx-auto my-12">
           <div className="w-16 h-16 rounded-full bg-primary-container text-primary flex items-center justify-center mx-auto">

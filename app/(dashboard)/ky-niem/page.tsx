@@ -7,18 +7,25 @@ import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/utils/date';
+import DateRangeFilter, {
+  EMPTY_DATE_RANGE,
+  isDateInRange,
+  type DateRangeFilterValue,
+} from '@/components/common/DateRangeFilter';
 
 export default function GalleryPage() {
   const { photos, albums, deletePhoto } = useDataStore();
   const [activeAlbum, setActiveAlbum] = useState<string>('all');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
   const { openUploadModal } = useDialogStore();
   const { showToast } = useNotificationStore();
 
   const filteredPhotos =
-    activeAlbum === 'all'
+    (activeAlbum === 'all'
       ? photos
-      : photos.filter((p) => p.albumId === activeAlbum);
+      : photos.filter((p) => p.albumId === activeAlbum)
+    ).filter((p) => isDateInRange(p.date, dateRange));
 
   const handleDelete = (id: string) => {
     deletePhoto(id);
@@ -66,6 +73,15 @@ export default function GalleryPage() {
         ))}
       </div>
 
+      <DateRangeFilter
+        value={dateRange}
+        onChange={setDateRange}
+        totalCount={
+          activeAlbum === 'all' ? photos.length : photos.filter((p) => p.albumId === activeAlbum).length
+        }
+        filteredCount={filteredPhotos.length}
+      />
+
       {/* Photo Grid or Empty State */}
       {filteredPhotos.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -97,16 +113,31 @@ export default function GalleryPage() {
           <div className="w-16 h-16 rounded-full bg-primary-container text-primary flex items-center justify-center mx-auto">
             <span className="material-symbols-outlined text-4xl">add_photo_alternate</span>
           </div>
-          <h3 className="font-heading font-bold text-lg text-primary">Chưa có bức ảnh nào</h3>
+          <h3 className="font-heading font-bold text-lg text-primary">
+            {photos.length === 0
+              ? 'Chưa có bức ảnh nào'
+              : 'Không có ảnh trong khoảng thời gian này'}
+          </h3>
           <p className="font-quicksand text-xs text-on-surface-variant font-medium">
-            Hãy tải lên những khoảnh khắc đáng nhớ đầu tiên của chúng mình nhé!
+            {photos.length === 0
+              ? 'Hãy tải lên những khoảnh khắc đáng nhớ đầu tiên của chúng mình nhé!'
+              : 'Thử chọn album khác hoặc bấm Tất cả để xem toàn bộ ảnh.'}
           </p>
-          <button
-            onClick={openUploadModal}
-            className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform"
-          >
-            Tải ảnh ngay
-          </button>
+          {photos.length === 0 ? (
+            <button
+              onClick={openUploadModal}
+              className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform"
+            >
+              Tải ảnh ngay
+            </button>
+          ) : (
+            <button
+              onClick={() => setDateRange(EMPTY_DATE_RANGE)}
+              className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform"
+            >
+              Xem tất cả ảnh
+            </button>
+          )}
         </div>
       )}
 

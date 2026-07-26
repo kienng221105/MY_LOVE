@@ -7,6 +7,11 @@ import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/utils/date';
+import DateRangeFilter, {
+  EMPTY_DATE_RANGE,
+  isDateInRange,
+  type DateRangeFilterValue,
+} from '@/components/common/DateRangeFilter';
 
 export default function LettersPage() {
   const { letters, addLetter, markLetterRead } = useDataStore();
@@ -20,6 +25,11 @@ export default function LettersPage() {
   const [content, setContent] = useState('');
   const [openDate, setOpenDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
+
+  const filteredLetters = letters.filter((letter) =>
+    isDateInRange(letter.sentDate, dateRange)
+  );
 
   const handleOpenLetter = (letter: LoveLetter) => {
     setActiveLetter(letter);
@@ -88,10 +98,18 @@ export default function LettersPage() {
         </button>
       </div>
 
+      <DateRangeFilter
+        value={dateRange}
+        onChange={setDateRange}
+        totalCount={letters.length}
+        filteredCount={filteredLetters.length}
+      />
+
       {/* Letters Grid or Empty State */}
       {letters.length > 0 ? (
+        filteredLetters.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {letters.map((letter, idx) => (
+          {filteredLetters.map((letter, idx) => (
             <motion.div
               key={letter.id}
               initial={{ opacity: 0, y: 20 }}
@@ -130,6 +148,17 @@ export default function LettersPage() {
             </motion.div>
           ))}
         </div>
+        ) : (
+          <div className="glass-panel p-12 rounded-3xl border border-dashed border-primary/30 text-center space-y-3 max-w-md mx-auto my-8">
+            <div className="w-14 h-14 rounded-full bg-primary-container text-primary flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-3xl">event_busy</span>
+            </div>
+            <h3 className="font-heading font-bold text-base text-primary">Chưa có thư trong khoảng thời gian này</h3>
+            <p className="font-quicksand text-xs text-on-surface-variant font-semibold">
+              Thử chọn khoảng khác hoặc bấm <em>Tất cả</em> để xem toàn bộ.
+            </p>
+          </div>
+        )
       ) : (
         <div className="glass-panel p-12 rounded-3xl border border-dashed border-primary/30 text-center space-y-4 max-w-md mx-auto my-12">
           <div className="w-16 h-16 rounded-full bg-primary-container text-primary flex items-center justify-center mx-auto">
