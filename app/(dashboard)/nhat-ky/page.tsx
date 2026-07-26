@@ -330,14 +330,16 @@ export default function DiaryPage() {
               )}
 
               {/* Reactions */}
-              <ReactionPicker
-                variant="fb"
-                targetType="DIARY"
-                targetId={entry.id}
-                me={me}
-                summary={entry.reactions}
-                onUpdate={(s) => updateDiaryReactions(entry.id, s)}
-              />
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-primary/10">
+                <ReactionPicker
+                  variant="fb"
+                  targetType="DIARY"
+                  targetId={entry.id}
+                  me={me}
+                  summary={entry.reactions}
+                  onUpdate={(s) => updateDiaryReactions(entry.id, s)}
+                />
+              </div>
             </motion.article>
           ))}
         </div>

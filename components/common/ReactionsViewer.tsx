@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   REACTION_META,
   ReactionSummary,
@@ -12,25 +12,63 @@ import {
 interface ReactionsViewerProps {
   summary: ReactionSummary | undefined;
   compact?: boolean;
-  /** Hiển thị dưới dạng stack mini (giống FB reactions-count pill) */
+  /** Stack mini pill (FB-style) */
   fpStyle?: boolean;
 }
 
-/**
- * Hiển thị đã có ai thả reaction gì:
- * - compact: chỉ pill nhỏ "❤️ 🤗 2" (FB-style)
- * - fpStyle: stack 3 emoji + count + tooltip tên
- */
+function useIsCoarsePointer(): boolean {
+  const [isCoarse, setIsCoarse] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsCoarse(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsCoarse(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return isCoarse;
+}
+
 export function ReactionsViewer({
   summary,
   compact = true,
   fpStyle = true,
 }: ReactionsViewerProps) {
   const [showList, setShowList] = useState(false);
+  const [flipDown, setFlipDown] = useState(false);
+  const containerRef = useState<HTMLDivElement | null>(null);
+  const isCoarse = useIsCoarsePointer();
+
+  /* Nếu ở gần top viewport (< 280px) thì flip xuống dưới */
+  useEffect(() => {
+    if (!showList) return;
+    const btn = document.querySelector(
+      '[data-reactions-pill-active="true"]'
+    );
+    if (!btn) return;
+    const rect = (btn as HTMLElement).getBoundingClientRect();
+    setFlipDown(rect.top < 280);
+  }, [showList]);
+
+  /* Click-outside */
+  useEffect(() => {
+    if (!showList) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('[data-reactions-pill-root]')) {
+        setShowList(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [showList]);
 
   if (!summary || summary.total === 0) return null;
 
-  /* Tổng hợp các emoji đã được thả (unique by type) */
   const activeTypes = (Object.keys(summary.grouped) as ReactionTypeValue[])
     .filter((t) => summary.grouped[t].total > 0)
     .sort((a, b) => summary.grouped[b].total - summary.grouped[a].total);
@@ -39,21 +77,24 @@ export function ReactionsViewer({
 
   if (compact && fpStyle) {
     return (
-      <div className="relative inline-flex">
+      <div className="relative inline-flex" data-reactions-pill-root>
         <motion.button
+          data-reactions-pill-active="true"
           onClick={(e) => {
             e.stopPropagation();
             setShowList((v) => !v);
           }}
-          whileHover={{ y: -1 }}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container border border-primary/20 shadow-sm hover:shadow-md transition-all"
+          whileTap={{ scale: 0.95 }}
+          className={`inline-flex items-center gap-1 ${
+            isCoarse ? 'px-2.5 py-1' : 'px-2 py-0.5'
+          } rounded-full bg-surface-container border border-primary/20 shadow-sm hover:shadow-md transition-all`}
           aria-label="Xem ai đã thả cảm xúc"
         >
           <span className="flex -space-x-1">
             {activeTypes.slice(0, 3).map((t) => (
               <span
                 key={t}
-                className="w-5 h-5 rounded-full bg-surface-container-lowest border border-white flex items-center justify-center text-[11px] leading-none"
+                className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-container-lowest border border-white text-[11px] leading-none"
               >
                 {REACTION_META[t].emoji}
               </span>
@@ -72,9 +113,15 @@ export function ReactionsViewer({
               exit={{ opacity: 0, y: 6, scale: 0.95 }}
               transition={{ duration: 0.15 }}
               onClick={(e) => e.stopPropagation()}
-              className="absolute z-30 bottom-full mb-2 left-0 min-w-[220px] max-w-[280px] p-3 rounded-2xl bg-surface border border-primary/20 shadow-2xl space-y-2"
+              onTouchStart={(e) => e.stopPropagation()}
+              className={`absolute z-40 ${
+                flipDown ? 'top-full mt-2' : 'bottom-full mb-2'
+              } ${
+                /* Mobile: canh để không tràn mép */
+                isCoarse ? 'left-0 right-auto max-w-[calc(100vw-32px)]' : 'left-0'
+              } min-w-[220px] max-w-[280px] p-3 rounded-2xl bg-surface border border-primary/20 shadow-2xl space-y-2`}
             >
-              <div className="text-[10px] font-quicksand font-bold text-outline uppercase">
+              <div className="text-[10px] font-quicksand font-bold text-outline uppercase tracking-wider">
                 Cảm xúc về mục này
               </div>
               {activeTypes.map((t) => {
@@ -84,7 +131,9 @@ export function ReactionsViewer({
                     key={t}
                     className="flex items-center gap-2 px-2 py-1.5 rounded-xl bg-surface-container-low"
                   >
-                    <span className="text-xl leading-none">{REACTION_META[t].emoji}</span>
+                    <span className="text-xl leading-none">
+                      {REACTION_META[t].emoji}
+                    </span>
                     <div className="flex-1 flex flex-wrap items-center gap-1.5">
                       {group.users.map((u) => (
                         <UserChip key={u.id + t} user={u} />
@@ -103,7 +152,6 @@ export function ReactionsViewer({
     );
   }
 
-  /* Default: danh sách các emoji + tên */
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {activeTypes.map((t) => {

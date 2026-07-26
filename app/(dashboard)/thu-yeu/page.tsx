@@ -148,7 +148,7 @@ export default function LettersPage() {
                   <span className="material-symbols-outlined text-base">drafts</span>
                   Chạm để đọc thư
                 </span>
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   {!letter.isRead && (
                     <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
                   )}
@@ -234,14 +234,16 @@ export default function LettersPage() {
                 <span className="font-quicksand text-xs font-bold text-on-surface-variant">
                   Cảm xúc của chúng mình:
                 </span>
-                <ReactionPicker
-                  variant="fb"
-                  targetType="LETTER"
-                  targetId={activeLetter.id}
-                  me={me}
-                  summary={activeLetter.reactions}
-                  onUpdate={(s) => updateLetterReactions(activeLetter.id, s)}
-                />
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-primary/10" onClick={(e) => e.stopPropagation()}>
+                  <ReactionPicker
+                    variant="fb"
+                    targetType="LETTER"
+                    targetId={activeLetter.id}
+                    me={me}
+                    summary={activeLetter.reactions}
+                    onUpdate={(s) => updateLetterReactions(activeLetter.id, s)}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-center pt-6">
