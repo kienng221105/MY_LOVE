@@ -5,7 +5,17 @@ import { Public } from './common/decorators/public.decorator';
 export class AppController {
   @Public()
   @Get()
-  getHealth() {
+  getHealthRoot() {
+    return {
+      status: 'ok',
+      message: 'OurSpace NestJS API Server is running online 💕',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Public()
+  @Get('health')
+  getHealthEndpoint() {
     return {
       status: 'ok',
       message: 'OurSpace NestJS API Server is running online 💕',

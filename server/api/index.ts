@@ -51,8 +51,8 @@ async function bootstrapServerless() {
 }
 
 export default async function handler(req: any, res: any) {
-  // Rewrite root URL '/' or '/favicon.ico' to '/api' so root requests return 200 OK health status
-  if (req.url === '/' || req.url === '' || req.url === '/favicon.ico') {
+  // Normalize root URL or favicon to /api so root health check responds with 200 OK
+  if (!req.url || req.url === '/' || req.url === '/favicon.ico' || req.url === '/favicon.png') {
     req.url = '/api';
   }
   const app = await bootstrapServerless();
