@@ -29,7 +29,6 @@ interface ReactionPickerProps {
   showViewer?: boolean;
 }
 
-/** Detect thiết bị có touch primary + check pointer coarse (mobile/tablet) */
 function useIsCoarsePointer(): boolean {
   const [isCoarse, setIsCoarse] = useState(false);
   useEffect(() => {
@@ -41,6 +40,25 @@ function useIsCoarsePointer(): boolean {
     return () => mq.removeEventListener('change', onChange);
   }, []);
   return isCoarse;
+}
+
+/** Cấm bôi đen text khi giữ phần tử (tránh giữ text bị select khi bấm reaction) */
+function preventSelection(el: HTMLElement | null) {
+  if (!el) return;
+  const s = el.style as CSSStyleDeclaration & {
+    webkitTouchCallout?: string;
+  };
+  s.userSelect = 'none';
+  s.webkitUserSelect = 'none';
+  s.webkitTouchCallout = 'none';
+  s.touchAction = 'manipulation';
+}
+
+interface PopoverPos {
+  left: number;
+  bottom: number;
+  /** Có nên flip lên trên hay không (true = hiện phía trên trigger) */
+  flipUp: boolean;
 }
 
 export function ReactionPicker({
@@ -61,23 +79,55 @@ export function ReactionPicker({
     { id: string; emoji: string; createdAt: number }[]
   >([]);
   const [hoverType, setHoverType] = useState<ReactionTypeValue | null>(null);
+  const [popoverPos, setPopoverPos] = useState<PopoverPos | null>(null);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
-  /* Hover trên desktop với delay ngắn (FB-like) */
+  /* Hover trên desktop */
   const openTimerRef = useRef<number | null>(null);
   const closeTimerRef = useRef<number | null>(null);
-  /* Long-press cho mobile */
-  const longPressTimerRef = useRef<number | null>(null);
-  const longPressTriggeredRef = useRef(false);
-  /* Swipe-to-select (mobile nâng cao) */
-  const touchStartXRef = useRef<number | null>(null);
 
   useEffect(() => {
     setLocal(summary);
   }, [summary]);
 
-  /* Click-outside to close */
+  /* Tính toán vị trí popover khi mở — luôn nằm trong viewport */
+  useEffect(() => {
+    if (!isOpen) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const popoverWidth = 280; // ước tính (sẽ clamp theo viewport)
+    const margin = 8;
+    const desiredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+    const minLeft = margin;
+    const maxLeft = window.innerWidth - popoverWidth - margin;
+    const left = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
+    const flipUp = rect.top > 100; // nếu đủ chỗ phía trên thì hiện phía trên
+    const bottom = window.innerHeight - rect.top + margin;
+    setPopoverPos({ left, bottom, flipUp });
+  }, [isOpen]);
+
+  /* Cleanup khi unmount */
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const btn = containerRef.current.querySelector('button');
+    if (btn) preventSelection(btn);
+    return () => {
+      if (btn) {
+        const s = btn.style as CSSStyleDeclaration & {
+          webkitTouchCallout?: string;
+        };
+        s.userSelect = '';
+        s.webkitUserSelect = '';
+        s.webkitTouchCallout = '';
+        s.touchAction = '';
+      }
+    };
+  }, []);
+
+  /* Click-outside / touch-outside đóng */
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -94,7 +144,7 @@ export function ReactionPicker({
     };
   }, [isOpen]);
 
-  /* ESC đóng + cleanup timers */
+  /* ESC đóng */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false);
@@ -104,7 +154,6 @@ export function ReactionPicker({
       document.removeEventListener('keydown', onKey);
       if (openTimerRef.current) clearTimeout(openTimerRef.current);
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     };
   }, []);
 
@@ -139,7 +188,17 @@ export function ReactionPicker({
     }
   };
 
-  /* ====== DESKTOP: hover-to-open ====== */
+  /* Tap chỉ mở popover — không auto-toggle */
+  const openPicker = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setIsOpen(true);
+    },
+    []
+  );
+
+  /* DESKTOP hover-to-open */
   const handleMouseEnter = useCallback(() => {
     if (isCoarse) return;
     if (closeTimerRef.current) {
@@ -161,66 +220,15 @@ export function ReactionPicker({
     }, 280);
   }, [isCoarse]);
 
-  /* ====== MOBILE: long-press + tap-to-toggle ====== */
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      longPressTriggeredRef.current = false;
-      touchStartXRef.current = e.touches[0].clientX;
-      // 350ms = ngưỡng long-press chuẩn
-      longPressTimerRef.current = window.setTimeout(() => {
-        longPressTriggeredRef.current = true;
-        setIsOpen(true);
-      }, 350);
-    },
-    []
-  );
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      // Nếu đã trigger long-press → không làm gì (popover đã mở)
-      if (longPressTriggeredRef.current) {
-        e.preventDefault();
-        return;
-      }
-      // Tap ngắn → toggle HEART (giống FB quick-react)
-      e.preventDefault();
-      if (!isOpen) handleToggle('HEART');
-    },
-    [handleToggle, isOpen]
-  );
-
-  const handleTouchCancel = useCallback(() => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  }, []);
-
   const total = local?.total ?? 0;
   const byMe = local?.byMe ?? null;
   const byPartner = local?.byPartner ?? null;
   const myEmoji = byMe ? REACTION_META[byMe].emoji : null;
 
-  /* ====== PICKER POPOVER ====== */
-  /* Tính toán hướng hiển thị: nếu sắp tràn mép phải thì mở bên trái */
-  const [popoverSide, setPopoverSide] = useState<'top' | 'top-left'>('top');
-  useEffect(() => {
-    if (!isOpen) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    // Nếu container ở góc phải của viewport (< 240px) thì canh trái
-    if (rect.left < 200) setPopoverSide('top-left');
-    else setPopoverSide('top');
-  }, [isOpen]);
-
+  /* ====== PICKER POPOVER (fixed positioning) ====== */
   const picker = (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && popoverPos && (
         <motion.div
           ref={popoverRef}
           initial={{ opacity: 0, y: 8, scale: 0.85 }}
@@ -234,13 +242,19 @@ export function ReactionPicker({
             }
           }}
           onMouseLeave={handleMouseLeave}
-          className={`absolute z-40 bottom-full mb-2 ${
-            popoverSide === 'top-left' ? 'left-0' : 'left-1/2 -translate-x-1/2'
-          } px-2 py-2 rounded-full bg-surface border border-primary/25 shadow-2xl flex items-end gap-1`}
-          /* Ngăn click popover lan ra ngoài */
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            left: popoverPos.left,
+            bottom: popoverPos.flipUp
+              ? popoverPos.bottom
+              : undefined,
+            top: popoverPos.flipUp ? undefined : 8,
+          }}
+          className="z-40 px-2 py-2 rounded-full bg-surface border border-primary/25 shadow-2xl flex items-end gap-1"
         >
-          {REACTION_OPTIONS.map((opt, idx) => {
+          {REACTION_OPTIONS.map((opt) => {
             const isMine = byMe === opt.type;
             const isHover = hoverType === opt.type;
             return (
@@ -250,7 +264,10 @@ export function ReactionPicker({
                   e.stopPropagation();
                   handleToggle(opt.type);
                 }}
-                onTouchStart={(e) => e.stopPropagation()}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  handleToggle(opt.type);
+                }}
                 onMouseEnter={() => setHoverType(opt.type)}
                 onMouseLeave={() => setHoverType(null)}
                 disabled={busy}
@@ -259,20 +276,25 @@ export function ReactionPicker({
                   scale: isHover ? 1.35 : 1,
                 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 18 }}
-                className={`relative flex items-center justify-center text-2xl ${
+                className={`relative flex items-center justify-center text-2xl rounded-full select-none ${
                   isCoarse ? 'w-11 h-11' : 'w-10 h-10'
-                } rounded-full ${
+                } ${
                   isMine
                     ? 'bg-primary-container'
                     : isHover
                       ? 'bg-surface-container-high'
                       : 'hover:bg-surface-container'
                 }`}
+                style={{
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  touchAction: 'manipulation',
+                  WebkitTouchCallout: 'none',
+                }}
                 title={opt.label}
                 aria-label={opt.label}
               >
                 {opt.emoji}
-                {/* Label phía dưới: chỉ hiện trên desktop hover, mobile thì tự show tooltip on tap */}
                 {isHover && !isCoarse && (
                   <motion.span
                     initial={{ opacity: 0, y: 4 }}
@@ -290,7 +312,7 @@ export function ReactionPicker({
     </AnimatePresence>
   );
 
-  /* ====== FLOATING EMOJIS (pop nhảy khi thả) ====== */
+  /* ====== FLOATING EMOJIS ====== */
   const floating = (
     <AnimatePresence>
       {floatingEmojis.map((e) => (
@@ -321,24 +343,20 @@ export function ReactionPicker({
       <div
         ref={containerRef}
         className="relative inline-flex items-center justify-center"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {floating}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isCoarse) {
-              handleToggle('HEART');
-              return;
-            }
-            setIsOpen((v) => !v);
-          }}
+          onClick={openPicker}
           disabled={busy}
           aria-label="Thả cảm xúc"
+          style={{
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            touchAction: 'manipulation',
+            WebkitTouchCallout: 'none',
+          }}
           className={`flex items-center justify-center ${
             isCoarse ? 'w-11 h-11' : 'w-10 h-10'
           } rounded-full transition-all active:scale-90 disabled:opacity-50 ${
@@ -347,7 +365,9 @@ export function ReactionPicker({
               : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
           }`}
         >
-          <span className="text-xl leading-none">{myEmoji ?? '⭐'}</span>
+          <span className="text-xl leading-none pointer-events-none">
+            {myEmoji ?? '⭐'}
+          </span>
         </button>
         {picker}
       </div>
@@ -371,9 +391,17 @@ export function ReactionPicker({
               disabled={busy}
               title={opt.label}
               aria-label={opt.label}
+              style={{
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                touchAction: 'manipulation',
+                WebkitTouchCallout: 'none',
+              }}
               className={`relative flex items-center gap-1.5 ${
-                isCoarse ? 'min-w-[44px] min-h-[44px] px-4 py-2.5' : 'px-3 py-1.5'
-              } rounded-full text-xs font-heading font-bold transition-all border ${
+                isCoarse
+                  ? 'min-w-[44px] min-h-[44px] px-4 py-2.5'
+                  : 'px-3 py-1.5'
+              } rounded-full text-xs font-heading font-bold transition-all border select-none ${
                 mine
                   ? 'bg-primary text-on-primary border-primary shadow-md scale-105'
                   : partner
@@ -395,28 +423,26 @@ export function ReactionPicker({
     <div
       ref={containerRef}
       className="relative inline-flex flex-col items-start gap-1.5"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <div className="relative">
         {floating}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isCoarse) {
-              handleToggle('HEART');
-              return;
-            }
-            handleToggle(byMe || 'HEART');
-          }}
+          onClick={openPicker}
           disabled={busy}
           aria-label="Thả cảm xúc"
+          style={{
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            touchAction: 'manipulation',
+            WebkitTouchCallout: 'none',
+          }}
           className={`relative flex items-center gap-1.5 ${
-            isCoarse ? 'min-h-[44px] px-4 py-2 text-sm' : 'px-3.5 py-1.5 text-xs'
-          } rounded-full font-heading font-bold border transition-all active:scale-95 disabled:opacity-50 ${
+            isCoarse
+              ? 'min-h-[44px] px-4 py-2 text-sm'
+              : 'px-3.5 py-1.5 text-xs'
+          } rounded-full font-heading font-bold border transition-all active:scale-95 disabled:opacity-50 select-none ${
             byMe
               ? 'bg-primary text-on-primary border-primary shadow-md'
               : byPartner
@@ -429,15 +455,16 @@ export function ReactionPicker({
             initial={{ scale: 0.6 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 12 }}
-            className="text-base leading-none"
+            className="text-base leading-none pointer-events-none"
           >
             {myEmoji ?? '😶'}
           </motion.span>
-          <span className="whitespace-nowrap">
-            {byMe ? REACTION_META[byMe].label.split(' ')[0] : 'Cảm xúc'}
+          <span className="whitespace-nowrap pointer-events-none">
+            {byMe
+              ? REACTION_META[byMe].label.split(' ')[0]
+              : 'Cảm xúc'}
           </span>
         </button>
-        {picker}
       </div>
 
       {showViewer && (
@@ -450,6 +477,8 @@ export function ReactionPicker({
           )}
         </div>
       )}
+
+      {picker}
     </div>
   );
 }

@@ -35,19 +35,31 @@ export function ReactionsViewer({
   fpStyle = true,
 }: ReactionsViewerProps) {
   const [showList, setShowList] = useState(false);
-  const [flipDown, setFlipDown] = useState(false);
-  const containerRef = useState<HTMLDivElement | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{
+    left: number;
+    top: number;
+    flipUp: boolean;
+  } | null>(null);
+
   const isCoarse = useIsCoarsePointer();
 
-  /* Nếu ở gần top viewport (< 280px) thì flip xuống dưới */
+  /* Tính toán vị trí popover khi mở — fixed positioning, clamp vào viewport */
   useEffect(() => {
     if (!showList) return;
     const btn = document.querySelector(
       '[data-reactions-pill-active="true"]'
-    );
+    ) as HTMLElement | null;
     if (!btn) return;
-    const rect = (btn as HTMLElement).getBoundingClientRect();
-    setFlipDown(rect.top < 280);
+    const rect = btn.getBoundingClientRect();
+    const popoverWidth = 280;
+    const margin = 8;
+    const desiredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+    const minLeft = margin;
+    const maxLeft = window.innerWidth - popoverWidth - margin;
+    const left = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
+    const flipUp = rect.top > 200;
+    const top = flipUp ? rect.top - 8 : rect.bottom + 8;
+    setPopoverPos({ left, top, flipUp });
   }, [showList]);
 
   /* Click-outside */
@@ -84,8 +96,15 @@ export function ReactionsViewer({
             e.stopPropagation();
             setShowList((v) => !v);
           }}
+          onTouchStart={(e) => e.stopPropagation()}
           whileTap={{ scale: 0.95 }}
-          className={`inline-flex items-center gap-1 ${
+          style={{
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            touchAction: 'manipulation',
+            WebkitTouchCallout: 'none',
+          }}
+          className={`inline-flex items-center gap-1 select-none ${
             isCoarse ? 'px-2.5 py-1' : 'px-2 py-0.5'
           } rounded-full bg-surface-container border border-primary/20 shadow-sm hover:shadow-md transition-all`}
           aria-label="Xem ai đã thả cảm xúc"
@@ -106,7 +125,7 @@ export function ReactionsViewer({
         </motion.button>
 
         <AnimatePresence>
-          {showList && (
+          {showList && popoverPos && (
             <motion.div
               initial={{ opacity: 0, y: 6, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -114,12 +133,16 @@ export function ReactionsViewer({
               transition={{ duration: 0.15 }}
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              className={`absolute z-40 ${
-                flipDown ? 'top-full mt-2' : 'bottom-full mb-2'
-              } ${
-                /* Mobile: canh để không tràn mép */
-                isCoarse ? 'left-0 right-auto max-w-[calc(100vw-32px)]' : 'left-0'
-              } min-w-[220px] max-w-[280px] p-3 rounded-2xl bg-surface border border-primary/20 shadow-2xl space-y-2`}
+              style={{
+                position: 'fixed',
+                left: popoverPos.left,
+                top: popoverPos.top,
+                transform: popoverPos.flipUp
+                  ? 'translateY(-100%)'
+                  : undefined,
+                maxWidth: `calc(100vw - 16px)`,
+              }}
+              className="z-40 min-w-[220px] p-3 rounded-2xl bg-surface border border-primary/20 shadow-2xl space-y-2"
             >
               <div className="text-[10px] font-quicksand font-bold text-outline uppercase tracking-wider">
                 Cảm xúc về mục này
