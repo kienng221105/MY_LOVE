@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   REACTION_OPTIONS,
@@ -19,12 +20,6 @@ interface ReactionPickerProps {
   me: ReactionBy;
   summary: ReactionSummary | undefined;
   onUpdate?: (next: ReactionSummary) => void;
-  /**
-   * Variant:
-   * - 'fb':   Pill button (FB-style) + emoji bay + viewer — dùng chính
-   * - 'icon': nút tròn emoji lớn (action bar trên card)
-   * - 'full': thanh 5 emoji ngang hàng
-   */
   variant?: 'fb' | 'icon' | 'full';
   showViewer?: boolean;
 }
@@ -42,23 +37,52 @@ function useIsCoarsePointer(): boolean {
   return isCoarse;
 }
 
-/** Cấm bôi đen text khi giữ phần tử (tránh giữ text bị select khi bấm reaction) */
-function preventSelection(el: HTMLElement | null) {
-  if (!el) return;
-  const s = el.style as CSSStyleDeclaration & {
-    webkitTouchCallout?: string;
-  };
-  s.userSelect = 'none';
-  s.webkitUserSelect = 'none';
-  s.webkitTouchCallout = 'none';
-  s.touchAction = 'manipulation';
+function useIsClient(): boolean {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => setIsClient(true), []);
+  return isClient;
+}
+
+/**
+ * Hook chia sẻ: chỉ duy nhất 1 picker có popover mở cùng lúc.
+ * Mỗi picker gọi `open()` sẽ tự đóng popover của picker khác.
+ */
+function useReactionModalState(uid: string) {
+  const [openUid, setOpenUid] = useState<string | null>(null);
+  const open = useCallback(() => setOpenUid(uid), [uid]);
+  const close = useCallback(() => {
+    setOpenUid((current) => (current === uid ? null : current));
+  }, [uid]);
+  const closeOthers = useCallback(
+    () => setOpenUid((current) => (current && current !== uid ? null : openUid)),
+    [uid]
+  );
+  const toggle = useCallback(() => {
+    setOpenUid((current) => (current === uid ? null : uid));
+  }, [uid]);
+  return { isOpen: openUid === uid, open, close, closeOthers, toggle, openUid, setOpenUid };
+}
+
+/** Tính vị trí popover luôn nằm trọn trong viewport */
+function computePopoverPos(rect: DOMRect, popoverWidth: number): PopoverPos {
+  const margin = 8;
+  const desiredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+  const minLeft = margin;
+  const maxLeft = window.innerWidth - popoverWidth - margin;
+  const left = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
+  const flipUp = rect.top > 100;
+  const top = flipUp ? rect.top - 8 : rect.bottom + 8;
+  const bottom: number | 'auto' = flipUp
+    ? window.innerHeight - rect.top + 8
+    : 'auto';
+  return { left, flipUp, top, bottom };
 }
 
 interface PopoverPos {
   left: number;
-  bottom: number;
-  /** Có nên flip lên trên hay không (true = hiện phía trên trigger) */
   flipUp: boolean;
+  top: number;
+  bottom: number | 'auto';
 }
 
 export function ReactionPicker({
@@ -71,8 +95,16 @@ export function ReactionPicker({
   showViewer = true,
 }: ReactionPickerProps) {
   const isCoarse = useIsCoarsePointer();
+  const isClient = useIsClient();
 
-  const [isOpen, setIsOpen] = useState(false);
+  // Tạo uid ổn định cho mỗi entry
+  const uid = useMemo(
+    () => `${targetType}:${targetId}:${Math.random().toString(36).slice(2, 9)}`,
+    [targetType, targetId]
+  );
+
+  const { isOpen, open, close, toggle } = useReactionModalState(uid);
+
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState<ReactionSummary | undefined>(summary);
   const [floatingEmojis, setFloatingEmojis] = useState<
@@ -81,60 +113,39 @@ export function ReactionPicker({
   const [hoverType, setHoverType] = useState<ReactionTypeValue | null>(null);
   const [popoverPos, setPopoverPos] = useState<PopoverPos | null>(null);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
-
-  /* Hover trên desktop */
-  const openTimerRef = useRef<number | null>(null);
-  const closeTimerRef = useRef<number | null>(null);
+  const pillRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     setLocal(summary);
   }, [summary]);
 
-  /* Tính toán vị trí popover khi mở — luôn nằm trong viewport */
+  /* Tính vị trí popover khi mở */
   useEffect(() => {
-    if (!isOpen) return;
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const popoverWidth = 280; // ước tính (sẽ clamp theo viewport)
-    const margin = 8;
-    const desiredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
-    const minLeft = margin;
-    const maxLeft = window.innerWidth - popoverWidth - margin;
-    const left = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
-    const flipUp = rect.top > 100; // nếu đủ chỗ phía trên thì hiện phía trên
-    const bottom = window.innerHeight - rect.top + margin;
-    setPopoverPos({ left, bottom, flipUp });
+    if (!isOpen || typeof window === 'undefined') return;
+    const el = pillRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const popoverWidth = Math.min(280, window.innerWidth - 32);
+    setPopoverPos(computePopoverPos(rect, popoverWidth));
+    /* Cập nhật lại khi resize/scroll */
+    const onResize = () => setPopoverPos(computePopoverPos(el.getBoundingClientRect(), popoverWidth));
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
+    };
   }, [isOpen]);
 
-  /* Cleanup khi unmount */
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const btn = containerRef.current.querySelector('button');
-    if (btn) preventSelection(btn);
-    return () => {
-      if (btn) {
-        const s = btn.style as CSSStyleDeclaration & {
-          webkitTouchCallout?: string;
-        };
-        s.userSelect = '';
-        s.webkitUserSelect = '';
-        s.webkitTouchCallout = '';
-        s.touchAction = '';
-      }
-    };
-  }, []);
-
-  /* Click-outside / touch-outside đóng */
+  /* Touch / click outside */
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
       const t = e.target as Node;
-      if (containerRef.current?.contains(t)) return;
-      if (popoverRef.current?.contains(t)) return;
-      setIsOpen(false);
+      const portalEl = document.querySelector('[data-reaction-portal-root]');
+      if (portalEl?.contains(t)) return;
+      if (pillRef.current?.contains(t)) return;
+      close();
     };
     document.addEventListener('mousedown', handler);
     document.addEventListener('touchstart', handler, { passive: true });
@@ -142,184 +153,160 @@ export function ReactionPicker({
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
     };
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   /* ESC đóng */
   useEffect(() => {
+    if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'Escape') close();
     };
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, close]);
 
-  const handleToggle = async (type: ReactionTypeValue) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const res = await ReactionsService.toggle({
-        type,
-        targetType,
-        targetId,
-        reactionBy: me,
-      });
-      setLocal(res.summary);
-      onUpdate?.(res.summary);
-      if (res.action !== 'removed') {
-        // Chỉ hiện 1 floating emoji gần nhất trên mobile (giảm render)
-        const id = `${Date.now()}-${Math.random()}`;
-        setFloatingEmojis((prev) => {
-          const next = [
-            ...prev,
-            { id, emoji: REACTION_META[type].emoji, createdAt: Date.now() },
-          ];
-          return next.slice(-2); // tối đa 2 cái cùng lúc
+  const handleToggle = useCallback(
+    async (type: ReactionTypeValue) => {
+      if (busy) return;
+      setBusy(true);
+      try {
+        const res = await ReactionsService.toggle({
+          type,
+          targetType,
+          targetId,
+          reactionBy: me,
         });
-        setTimeout(() => {
-          setFloatingEmojis((prev) => prev.filter((e) => e.id !== id));
-        }, 1100);
+        setLocal(res.summary);
+        onUpdate?.(res.summary);
+        if (res.action !== 'removed') {
+          const id = `${Date.now()}-${Math.random()}`;
+          setFloatingEmojis((prev) => {
+            const next = [
+              ...prev,
+              { id, emoji: REACTION_META[type].emoji, createdAt: Date.now() },
+            ];
+            return next.slice(-2);
+          });
+          window.setTimeout(() => {
+            setFloatingEmojis((prev) => prev.filter((e) => e.id !== id));
+          }, 1100);
+        }
+      } catch (err: any) {
+        console.warn('Toggle reaction failed', err);
+      } finally {
+        // Dùng microtask để không block UI update
+        window.setTimeout(() => setBusy(false), 0);
+        close();
+        setHoverType(null);
       }
-    } catch (err: any) {
-      console.warn('Toggle reaction failed', err);
-    } finally {
-      // Tắt busy nhanh để tương tác kế tiếp không bị khóa
-      setTimeout(() => setBusy(false), 0);
-      setIsOpen(false);
-      setHoverType(null);
-    }
-  };
+    },
+    [busy, targetType, targetId, me, onUpdate, close]
+  );
 
-  /* Tap chỉ mở popover — không auto-toggle */
+  /* Pill click — chỉ mở popover (không auto-toggle) */
   const openPicker = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       e.stopPropagation();
-      e.preventDefault();
-      setIsOpen(true);
+      toggle();
     },
-    []
+    [toggle]
   );
-
-  /* DESKTOP hover-to-open */
-  const handleMouseEnter = useCallback(() => {
-    if (isCoarse) return;
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    openTimerRef.current = window.setTimeout(() => setIsOpen(true), 80);
-  }, [isCoarse]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (isCoarse) return;
-    if (openTimerRef.current) {
-      clearTimeout(openTimerRef.current);
-      openTimerRef.current = null;
-    }
-    closeTimerRef.current = window.setTimeout(() => {
-      setIsOpen(false);
-      setHoverType(null);
-    }, 280);
-  }, [isCoarse]);
 
   const total = local?.total ?? 0;
   const byMe = local?.byMe ?? null;
   const byPartner = local?.byPartner ?? null;
   const myEmoji = byMe ? REACTION_META[byMe].emoji : null;
 
-  /* ====== PICKER POPOVER (fixed positioning) ====== */
-  const picker = (
-    <AnimatePresence>
-      {isOpen && popoverPos && (
-        <motion.div
-          ref={popoverRef}
-          initial={{ opacity: 0, y: 8, scale: 0.85 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 8, scale: 0.85 }}
-          transition={{ duration: 0.18, ease: [0.34, 1.56, 0.64, 1] }}
-          onMouseEnter={() => {
-            if (closeTimerRef.current) {
-              clearTimeout(closeTimerRef.current);
-              closeTimerRef.current = null;
-            }
-          }}
-          onMouseLeave={handleMouseLeave}
-          onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          style={{
-            position: 'fixed',
-            left: popoverPos.left,
-            bottom: popoverPos.flipUp
-              ? popoverPos.bottom
-              : undefined,
-            top: popoverPos.flipUp ? undefined : 8,
-          }}
-          className="z-40 px-2 py-2 rounded-full bg-surface border border-primary/25 shadow-2xl flex items-end gap-1"
-        >
-          {REACTION_OPTIONS.map((opt) => {
-            const isMine = byMe === opt.type;
-            const isHover = hoverType === opt.type;
-            return (
-              <motion.button
-                key={opt.type}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleToggle(opt.type);
-                }}
-                onTouchStart={(e) => {
-                  /* Giữ trên touch — KHÔNG toggle, chỉ ngắt trigger click tiếp theo */
-                  e.stopPropagation();
-                }}
-                onMouseEnter={() => setHoverType(opt.type)}
-                onMouseLeave={() => setHoverType(null)}
-                disabled={busy}
-                /* Mobile: bỏ animate theo hover để tránh layout shift/lag */
-                animate={isCoarse ? false : {
-                  y: isHover ? -12 : 0,
-                  scale: isHover ? 1.35 : 1,
-                }}
-                transition={{ type: 'spring', stiffness: 380, damping: 18 }}
-                className={`relative flex items-center justify-center text-2xl rounded-full select-none ${
-                  isCoarse ? 'w-11 h-11' : 'w-10 h-10'
-                } ${
-                  isMine
-                    ? 'bg-primary-container'
-                    : isHover
-                      ? 'bg-surface-container-high'
-                      : 'hover:bg-surface-container'
-                }`}
-                style={{
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  touchAction: 'manipulation',
-                  WebkitTouchCallout: 'none',
-                }}
-                title={opt.label}
-                aria-label={opt.label}
-              >
-                {opt.emoji}
-                {isHover && !isCoarse && (
-                  <motion.span
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute top-full mt-1 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-md bg-on-surface text-surface text-[10px] font-quicksand font-bold shadow pointer-events-none"
+  /* ====== POPOVER (qua Portal) ====== */
+  const popover = isClient
+    ? createPortal(
+        <AnimatePresence>
+          {isOpen && popoverPos && (
+            <motion.div
+              data-reaction-portal-root
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, y: 8, scale: 0.85 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.85 }}
+              transition={{ duration: 0.18, ease: [0.34, 1.56, 0.64, 1] }}
+              style={{
+                position: 'fixed',
+                left: popoverPos.left,
+                top: popoverPos.flipUp ? 'auto' : popoverPos.top,
+                bottom: popoverPos.flipUp ? popoverPos.bottom : 'auto',
+                zIndex: 60,
+              }}
+              className="px-2 py-2 rounded-full bg-surface border border-primary/25 shadow-2xl flex items-end gap-1"
+            >
+              {REACTION_OPTIONS.map((opt) => {
+                const isMine = byMe === opt.type;
+                const isHover = hoverType === opt.type;
+                return (
+                  <motion.button
+                    key={opt.type}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleToggle(opt.type);
+                    }}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onMouseEnter={() => setHoverType(opt.type)}
+                    onMouseLeave={() => setHoverType(null)}
+                    disabled={busy}
+                    animate={
+                      isCoarse
+                        ? false
+                        : {
+                            y: isHover ? -12 : 0,
+                            scale: isHover ? 1.35 : 1,
+                          }
+                    }
+                    transition={{
+                      type: 'spring',
+                      stiffness: 380,
+                      damping: 18,
+                    }}
+                    className={`relative flex items-center justify-center text-2xl rounded-full select-none ${
+                      isCoarse ? 'w-11 h-11' : 'w-10 h-10'
+                    } ${
+                      isMine
+                        ? 'bg-primary-container'
+                        : isHover
+                          ? 'bg-surface-container-high'
+                          : 'hover:bg-surface-container'
+                    } ${busy ? 'opacity-60' : ''}`}
+                    style={{
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      touchAction: 'manipulation',
+                      WebkitTouchCallout: 'none',
+                    }}
+                    title={opt.label}
+                    aria-label={opt.label}
                   >
-                    {opt.label}
-                  </motion.span>
-                )}
-              </motion.button>
-            );
-          })}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+                    {opt.emoji}
+                    {isHover && !isCoarse && (
+                      <motion.span
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute top-full mt-1 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-md bg-on-surface text-surface text-[10px] font-quicksand font-bold shadow pointer-events-none"
+                      >
+                        {opt.label}
+                      </motion.span>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )
+    : null;
 
-  /* ====== FLOATING EMOJIS ====== */
+  /* ====== FLOATING EMOJI ====== */
   const floating = (
     <AnimatePresence>
       {floatingEmojis.map((e) => (
@@ -328,15 +315,15 @@ export function ReactionPicker({
           initial={{ opacity: 0, y: 0, scale: 0.5 }}
           animate={{
             opacity: [0, 1, 1, 0],
-            y: -80,
-            x: (Math.random() - 0.5) * 50,
+            y: -60,
+            x: (Math.random() - 0.5) * 30,
             scale: [0.5, 1.6, 1.2, 0.9],
             rotate: (Math.random() - 0.5) * 50,
           }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.3, ease: 'easeOut' }}
+          transition={{ duration: 1.1, ease: 'easeOut' }}
           className="absolute -top-2 left-1/2 -translate-x-1/2 pointer-events-none text-2xl"
-          style={{ zIndex: 50 }}
+          style={{ zIndex: 70 }}
         >
           {e.emoji}
         </motion.span>
@@ -347,14 +334,10 @@ export function ReactionPicker({
   /* ====== ICON VARIANT ====== */
   if (variant === 'icon') {
     return (
-      <div
-        ref={containerRef}
-        className="relative inline-flex items-center justify-center"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <div className="relative inline-flex items-center justify-center">
         {floating}
         <button
+          ref={pillRef}
           onClick={openPicker}
           disabled={busy}
           aria-label="Thả cảm xúc"
@@ -370,13 +353,13 @@ export function ReactionPicker({
             byMe
               ? 'bg-primary text-on-primary shadow-md'
               : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
-          }`}
+          } ${isOpen ? 'ring-2 ring-primary/40' : ''}`}
         >
           <span className="text-xl leading-none pointer-events-none">
             {myEmoji ?? '⭐'}
           </span>
         </button>
-        {picker}
+        {popover}
       </div>
     );
   }
@@ -384,11 +367,11 @@ export function ReactionPicker({
   /* ====== FULL VARIANT ====== */
   if (variant === 'full') {
     return (
-      <div ref={containerRef} className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {floating}
         {REACTION_OPTIONS.map((opt) => {
           const g = local?.grouped[opt.type];
-          const total = g?.total ?? 0;
+          const t = g?.total ?? 0;
           const mine = g?.mine ?? false;
           const partner = g?.partner ?? false;
           return (
@@ -417,7 +400,7 @@ export function ReactionPicker({
               } disabled:opacity-60`}
             >
               <span className="text-base leading-none">{opt.emoji}</span>
-              <span>{total || ''}</span>
+              <span>{t || ''}</span>
             </button>
           );
         })}
@@ -427,15 +410,11 @@ export function ReactionPicker({
 
   /* ====== FB VARIANT (default) ====== */
   return (
-    <div
-      ref={containerRef}
-      className="relative inline-flex flex-col items-start gap-1.5"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="relative inline-flex flex-col items-start gap-1.5">
       <div className="relative">
         {floating}
         <button
+          ref={pillRef}
           onClick={openPicker}
           disabled={busy}
           aria-label="Thả cảm xúc"
@@ -455,7 +434,7 @@ export function ReactionPicker({
               : byPartner
                 ? 'bg-primary-container text-on-primary-container border-primary/40'
                 : 'bg-surface-container-low text-on-surface-variant border-primary/10 hover:bg-surface-container'
-          }`}
+          } ${isOpen ? 'ring-2 ring-primary/40' : ''}`}
         >
           <motion.span
             key={myEmoji || 'empty'}
@@ -485,7 +464,7 @@ export function ReactionPicker({
         </div>
       )}
 
-      {picker}
+      {popover}
     </div>
   );
 }
