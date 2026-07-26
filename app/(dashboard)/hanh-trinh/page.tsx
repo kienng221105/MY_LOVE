@@ -336,7 +336,7 @@ export default function JourneyPage() {
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-heading font-bold"
+                      className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
                     />
                   </div>
 
@@ -349,7 +349,7 @@ export default function JourneyPage() {
                       placeholder="Ví dụ: Đà Lạt"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-heading font-bold"
+                      className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
                     />
                   </div>
                 </div>
@@ -363,7 +363,7 @@ export default function JourneyPage() {
                     placeholder="Viết vài dòng cảm xúc ngọt ngào..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-quicksand font-medium"
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-quicksand font-medium"
                   />
                 </div>
 

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, Be_Vietnam_Pro, Quicksand } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/common/Providers';
@@ -33,6 +33,15 @@ export const metadata: Metadata = {
     shortcut: '/logo.svg',
     apple: '/logo.svg',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+  themeColor: '#fff8f9',
 };
 
 export default function RootLayout({

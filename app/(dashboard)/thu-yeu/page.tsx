@@ -240,7 +240,7 @@ export default function LettersPage() {
                     placeholder="Nhập tiêu đề ngọt ngào... (tùy chọn)"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-sm font-heading font-bold"
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
                   />
                 </div>
 
@@ -254,7 +254,7 @@ export default function LettersPage() {
                     placeholder="Viết những suy nghĩ, tình cảm chân thành..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-xs font-quicksand font-medium"
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-quicksand font-medium"
                   />
                 </div>
 

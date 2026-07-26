@@ -69,7 +69,7 @@ export function ChangePasswordModal() {
                 placeholder="Nhập mật mã mới..."
                 value={newPasscode}
                 onChange={(e) => setNewPasscode(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-sm font-heading font-bold"
+                className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
               />
             </div>
 
@@ -83,7 +83,7 @@ export function ChangePasswordModal() {
                 placeholder="Nhập lại mật mã mới..."
                 value={confirmPasscode}
                 onChange={(e) => setConfirmPasscode(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 text-sm font-heading font-bold"
+                className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low border border-primary/20 font-heading font-bold"
               />
             </div>
 

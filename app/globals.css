@@ -4,6 +4,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Prevent iOS Safari from auto-zooming on focus.
+     Safari only auto-zooms when computed font-size is below 16px,
+     and it leaves the viewport zoomed-in until the user pinches out.
+     Forcing 16px here keeps the layout stable while still letting users
+     pinch-to-zoom (we keep userScalable=true in the viewport meta). */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input,
+  textarea,
+  select,
+  button,
+  [contenteditable='true'] {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* Inputs that explicitly opt into a smaller visual style (e.g. a chip)
+     can override the above with `.allow-small-font` on the element. */
+  .allow-small-font,
+  .allow-small-font input,
+  .allow-small-font textarea,
+  .allow-small-font select {
+    font-size: inherit;
+  }
+}
+
 :root {
   --background: #fff8f9;
   --foreground: #21191e;
