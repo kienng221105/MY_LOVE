@@ -22,11 +22,11 @@ export default function EntrancePage() {
     }
   }, [router, checkSession]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passcode.trim() || isOpening) return;
 
-    const success = login(passcode);
+    const success = await login(passcode);
     if (success) {
       setError(false);
       setIsOpening(true);

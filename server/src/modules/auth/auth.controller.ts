@@ -18,8 +18,8 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @Public()
   @Post('change-password')
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Đổi mật mã bí mật' })
   async changePassword(@Body() changePasswordDto: ChangePasswordDto) {
     return this.authService.changePassword(changePasswordDto);

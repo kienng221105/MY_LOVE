@@ -16,7 +16,7 @@ export function ChangePasswordModal() {
 
   if (!isChangePasswordOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPasscode.trim()) {
       showToast('Vui lòng nhập mật mã mới! 🥺', 'error');
@@ -27,7 +27,7 @@ export function ChangePasswordModal() {
       return;
     }
 
-    setMagicPhrase(newPasscode);
+    await setMagicPhrase(newPasscode);
     showToast('Đã đổi mật mã bí mật thành công! 💖');
     setNewPasscode('');
     setConfirmPasscode('');
