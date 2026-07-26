@@ -111,7 +111,7 @@ export default function EntrancePage() {
           <div className="relative">
             <input
               type="password"
-              placeholder="Nhập mật mã bí mật (VD: 24122023)"
+              placeholder="Nhập mật mã bí mật"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               className={`w-full px-6 py-4 rounded-full text-center font-heading font-bold text-base bg-surface/80 border-2 shadow-inner focus:outline-none transition-all ${
