@@ -4,6 +4,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useUpload } from '@/hooks/useUpload';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { fileToBase64 } from '@/utils/file';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export function UploadModal() {
@@ -27,15 +28,20 @@ export function UploadModal() {
     }
   };
 
-  const handleSave = () => {
-    files.forEach((f) => {
-      addPhoto({
-        url: f.previewUrl,
-        title: f.file.name.replace(/\.[^/.]+$/, ''),
-        date: new Date().toISOString().split('T')[0],
-        caption: 'Kỷ niệm mới thêm',
-      });
-    });
+  const handleSave = async () => {
+    const base64Photos = await Promise.all(
+      files.map(async (f) => {
+        const base64 = await fileToBase64(f.file);
+        return {
+          url: base64,
+          title: f.file.name.replace(/\.[^/.]+$/, ''),
+          date: new Date().toISOString().split('T')[0],
+          caption: 'Kỷ niệm mới thêm',
+        };
+      })
+    );
+
+    base64Photos.forEach((photo) => addPhoto(photo));
 
     showToast('Tải ảnh kỷ niệm thành công! 💖');
     clearAll();
