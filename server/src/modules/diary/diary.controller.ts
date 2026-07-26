@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Delete, Body, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DiaryService } from './diary.service';
 import { CreateDiaryDto } from './dto/create-diary.dto';
 
@@ -12,16 +12,19 @@ export class DiaryController {
   constructor(private readonly diaryService: DiaryService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách các bài nhật ký' })
-  async getEntries() {
-    const data = await this.diaryService.getEntries();
+  @ApiOperation({ summary: 'Lấy danh sách các bài nhật ký kèm reactions' })
+  async getEntries(@Query('me') me?: 'Kien' | 'Love') {
+    const data = await this.diaryService.getEntries(me || 'Kien');
     return { message: 'Lấy nhật ký thành công', data };
   }
 
   @Post()
   @ApiOperation({ summary: 'Tạo bài nhật ký mới' })
-  async createEntry(@Body() dto: CreateDiaryDto) {
-    const data = await this.diaryService.createEntry(dto);
+  async createEntry(
+    @Body() dto: CreateDiaryDto,
+    @Query('me') me?: 'Kien' | 'Love'
+  ) {
+    const data = await this.diaryService.createEntry(dto, me || 'Kien');
     return { message: 'Lưu bài nhật ký thành công', data };
   }
 

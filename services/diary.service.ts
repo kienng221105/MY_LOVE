@@ -24,9 +24,9 @@ function unwrapError(err: any, fallback: string): never {
 }
 
 export class DiaryService {
-  static async getEntries(): Promise<DiaryEntry[]> {
+  static async getEntries(me: 'Kien' | 'Love' = 'Kien'): Promise<DiaryEntry[]> {
     try {
-      const res = await apiClient.get('/diary');
+      const res = await apiClient.get('/diary', { params: { me } });
       return res.data?.data || [];
     } catch (err) {
       unwrapError(err, 'Không tải được nhật ký');
@@ -34,10 +34,11 @@ export class DiaryService {
   }
 
   static async createEntry(
-    entry: Omit<DiaryEntry, 'id'>
+    entry: Omit<DiaryEntry, 'id'>,
+    me: 'Kien' | 'Love' = 'Kien'
   ): Promise<DiaryEntry> {
     try {
-      const res = await apiClient.post('/diary', entry);
+      const res = await apiClient.post('/diary', entry, { params: { me } });
       if (!res.data?.data) {
         throw new DiaryApiError('Phản hồi lưu nhật ký không hợp lệ');
       }

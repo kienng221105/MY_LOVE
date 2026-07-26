@@ -1,3 +1,5 @@
+import { ReactionSummary } from './reaction';
+
 export interface LoveLetter {
   id: string;
   sender: string;
@@ -10,4 +12,5 @@ export interface LoveLetter {
   isFavorite?: boolean;
   isDraft?: boolean;
   bgStyle?: 'pink' | 'lavender' | 'mint';
+  reactions?: ReactionSummary;
 }

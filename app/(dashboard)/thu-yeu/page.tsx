@@ -5,6 +5,8 @@ import { LoveLetter } from '@/types/letter';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useReactionContext } from '@/hooks/useReactionContext';
+import { ReactionPicker } from '@/components/common/ReactionPicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/utils/date';
 import DateRangeFilter, {
@@ -14,10 +16,11 @@ import DateRangeFilter, {
 } from '@/components/common/DateRangeFilter';
 
 export default function LettersPage() {
-  const { letters, addLetter, markLetterRead } = useDataStore();
+  const { letters, addLetter, markLetterRead, updateLetterReactions } = useDataStore();
   const [activeLetter, setActiveLetter] = useState<LoveLetter | null>(null);
   const { isWriteLetterOpen, openWriteLetter, closeWriteLetter } = useDialogStore();
   const { showToast } = useNotificationStore();
+  const { me } = useReactionContext();
 
   // Form state
   const [sender, setSender] = useState('Kiên');
@@ -136,14 +139,23 @@ export default function LettersPage() {
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between border-t border-primary/10">
+              <div className="pt-2 flex items-center justify-between border-t border-primary/10 gap-2">
                 <span className="font-quicksand text-[11px] font-bold text-primary flex items-center gap-1">
                   <span className="material-symbols-outlined text-base">drafts</span>
                   Chạm để đọc thư
                 </span>
-                {!letter.isRead && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
-                )}
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  {!letter.isRead && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
+                  )}
+                  <ReactionPicker
+                    targetType="LETTER"
+                    targetId={letter.id}
+                    me={me}
+                    summary={letter.reactions}
+                    onUpdate={(s) => updateLetterReactions(letter.id, s)}
+                  />
+                </div>
               </div>
             </motion.div>
           ))}
@@ -208,6 +220,23 @@ export default function LettersPage() {
 
               <div className="bg-surface-container-low p-6 rounded-2xl border border-primary/20 max-h-72 overflow-y-auto font-quicksand text-sm text-on-surface leading-relaxed whitespace-pre-wrap shadow-inner">
                 {activeLetter.content}
+              </div>
+
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-primary/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="font-quicksand text-xs font-bold text-on-surface-variant">
+                  Cảm xúc của chúng mình:
+                </span>
+                <ReactionPicker
+                  variant="full"
+                  targetType="LETTER"
+                  targetId={activeLetter.id}
+                  me={me}
+                  summary={activeLetter.reactions}
+                  onUpdate={(s) => updateLetterReactions(activeLetter.id, s)}
+                />
               </div>
 
               <div className="flex items-center justify-center pt-6">

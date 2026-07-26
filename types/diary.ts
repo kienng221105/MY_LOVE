@@ -1,3 +1,5 @@
+import { ReactionSummary } from './reaction';
+
 export type MoodType =
   | 'happy'
   | 'romantic'
@@ -34,4 +36,5 @@ export interface DiaryEntry {
   imageUrls?: string[];
   author: 'Kien' | 'Love';
   isDraft?: boolean;
+  reactions?: ReactionSummary;
 }

@@ -5,6 +5,9 @@ import { DiaryEntry, MoodType, WeatherType } from '@/types/diary';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useReactionContext } from '@/hooks/useReactionContext';
+import { ReactionPicker } from '@/components/common/ReactionPicker';
+import { ImageLightbox } from '@/components/common/ImageLightbox';
 import { uploadImageFile, isHttpUpstreamUrl } from '@/utils/file';
 import { formatDateTime } from '@/utils/date';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,9 +25,10 @@ interface PendingImage {
 }
 
 export default function DiaryPage() {
-  const { diaryEntries, addDiaryEntry, deleteDiaryEntry } = useDataStore();
+  const { diaryEntries, addDiaryEntry, deleteDiaryEntry, updateDiaryReactions } = useDataStore();
   const { isCreateDiaryOpen, openCreateDiary, closeCreateDiary } = useDialogStore();
   const { showToast } = useNotificationStore();
+  const { me } = useReactionContext();
 
   // Form & Autosave draft state
   const [title, setTitle] = useState('');
@@ -34,6 +38,8 @@ export default function DiaryPage() {
   const [author, setAuthor] = useState<'Kien' | 'Love'>('Kien');
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
+  const [activeZoomImageCaption, setActiveZoomImageCaption] = useState<string | undefined>(undefined);
+  const [activeZoomImageDate, setActiveZoomImageDate] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
 
@@ -298,7 +304,11 @@ export default function DiaryPage() {
                   {entry.imageUrls.map((url, i) => (
                     <div
                       key={i}
-                      onClick={() => setActiveZoomImage(url)}
+                      onClick={() => {
+                        setActiveZoomImage(url);
+                        setActiveZoomImageCaption(entry.title || undefined);
+                        setActiveZoomImageDate(formatDateTime(entry.date));
+                      }}
                       className="w-full h-44 sm:h-52 rounded-2xl overflow-hidden shadow-sm border border-primary/15 relative group/img cursor-pointer bg-surface-container"
                     >
                       <img
@@ -313,6 +323,16 @@ export default function DiaryPage() {
                   ))}
                 </div>
               )}
+
+              {/* Reactions */}
+              <ReactionPicker
+                variant="full"
+                targetType="DIARY"
+                targetId={entry.id}
+                me={me}
+                summary={entry.reactions}
+                onUpdate={(s) => updateDiaryReactions(entry.id, s)}
+              />
             </motion.article>
           ))}
         </div>
@@ -521,33 +541,14 @@ export default function DiaryPage() {
         )}
       </AnimatePresence>
 
-      {/* Lightbox / Zoom Modal for Diary Photos */}
-      <AnimatePresence>
-        {activeZoomImage && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative max-w-3xl w-full glass-panel p-4 rounded-3xl bg-surface/95 border-2 border-primary/30 shadow-2xl"
-            >
-              <button
-                onClick={() => setActiveZoomImage(null)}
-                className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-              <div className="max-h-[80vh] overflow-hidden rounded-2xl flex items-center justify-center">
-                <img
-                  src={activeZoomImage}
-                  alt="Zoom"
-                  className="max-h-[75vh] max-w-full object-contain rounded-xl"
-                />
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* ImageLightbox for Diary Photos — hiển thị ảnh gốc (không qua Cloudinary transform) */}
+      <ImageLightbox
+        src={activeZoomImage}
+        alt="Ảnh nhật ký"
+        caption={activeZoomImageCaption}
+        date={activeZoomImageDate}
+        onClose={() => setActiveZoomImage(null)}
+      />
     </main>
   );
 }

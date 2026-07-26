@@ -3,10 +3,12 @@ import { Photo, Album } from '@/types/gallery';
 import { MemoryMilestone } from '@/types/memory';
 import { LoveLetter } from '@/types/letter';
 import { DiaryEntry } from '@/types/diary';
+import { ReactionSummary } from '@/types/reaction';
 import { GalleryService } from '@/services/gallery.service';
 import { MemoriesService } from '@/services/memories.service';
 import { LettersService } from '@/services/letters.service';
 import { DiaryService } from '@/services/diary.service';
+import { resolveReactionBy } from '@/utils/reaction';
 
 interface DataStore {
   photos: Photo[];
@@ -24,9 +26,11 @@ interface DataStore {
 
   addLetter: (letter: Omit<LoveLetter, 'id'>) => Promise<void>;
   markLetterRead: (id: string) => Promise<void>;
+  updateLetterReactions: (id: string, summary: ReactionSummary) => void;
 
   addDiaryEntry: (entry: Omit<DiaryEntry, 'id'>) => Promise<void>;
   deleteDiaryEntry: (id: string) => Promise<void>;
+  updateDiaryReactions: (id: string, summary: ReactionSummary) => void;
 
   initData: () => Promise<void>;
   clearLocalCache: () => void;
@@ -45,8 +49,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
     const tasks = await Promise.allSettled([
       GalleryService.getPhotos(),
       MemoriesService.getMemories(),
-      LettersService.getLetters(),
-      DiaryService.getEntries(),
+      LettersService.getLetters(getCurrentMe()),
+      DiaryService.getEntries(getCurrentMe()),
     ]);
 
     const [photosResult, memoriesResult, lettersResult, diaryResult] = tasks;
@@ -131,7 +135,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   addLetter: async (letterData) => {
-    const created = await LettersService.createLetter(letterData);
+    const created = await LettersService.createLetter(letterData, getCurrentMe());
     const updated = [created, ...get().letters];
     set({ letters: updated });
     saveToStorage(get());
@@ -160,8 +164,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
+  updateLetterReactions: (id, summary) => {
+    const updated = get().letters.map((l) =>
+      l.id === id ? { ...l, reactions: summary } : l
+    );
+    set({ letters: updated });
+    saveToStorage(get());
+  },
+
   addDiaryEntry: async (entryData) => {
-    const created = await DiaryService.createEntry(entryData);
+    const created = await DiaryService.createEntry(entryData, getCurrentMe());
     const updated = [created, ...get().diaryEntries];
     set({ diaryEntries: updated });
     saveToStorage(get());
@@ -181,7 +193,26 @@ export const useDataStore = create<DataStore>((set, get) => ({
       throw err;
     }
   },
+
+  updateDiaryReactions: (id, summary) => {
+    const updated = get().diaryEntries.map((d) =>
+      d.id === id ? { ...d, reactions: summary } : d
+    );
+    set({ diaryEntries: updated });
+    saveToStorage(get());
+  },
 }));
+
+function getCurrentMe(): 'Kien' | 'Love' {
+  if (typeof window === 'undefined') return 'Kien';
+  try {
+    const stored = localStorage.getItem('ourspace_user_name');
+    if (stored) {
+      return resolveReactionBy(stored);
+    }
+  } catch {}
+  return 'Kien';
+}
 
 function pickValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
   if (result.status === 'fulfilled') return result.value;

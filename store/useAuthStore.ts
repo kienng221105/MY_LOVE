@@ -13,6 +13,13 @@ interface AuthStore {
   setMagicPhrase: (newPhrase: string) => Promise<void>;
 }
 
+function persistUserName(name: string | undefined) {
+  if (typeof window === 'undefined' || !name) return;
+  try {
+    localStorage.setItem('ourspace_user_name', name);
+  } catch {}
+}
+
 function extractUser(payload: any): User | null {
   if (!payload || typeof payload !== 'object') return null;
   const anniversaryDate =
@@ -48,9 +55,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           localStorage.setItem('ourspace_token', data.accessToken);
           localStorage.setItem('ourspace_magic_phrase', inputClean);
         }
-        const safeUser = extractUser(data.user) ?? mockUser;
-        set({ isAuthenticated: true, user: safeUser, magicPhrase: inputClean });
-        return true;
+const safeUser = extractUser(data.user) ?? mockUser;
+      set({ isAuthenticated: true, user: safeUser, magicPhrase: inputClean });
+      persistUserName(safeUser.name);
+      return true;
       }
     } catch (e) {
       console.warn('API auth failed, checking local passcode fallback');
@@ -69,6 +77,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         localStorage.setItem('ourspace_auth', 'true');
       }
       set({ isAuthenticated: true, user: mockUser });
+      persistUserName(mockUser.name);
       return true;
     }
     return false;
@@ -81,6 +90,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       localStorage.removeItem('ourspace_anniversary_date');
       localStorage.removeItem('ourspace_avatar_kien');
       localStorage.removeItem('ourspace_avatar_tra');
+      localStorage.removeItem('ourspace_user_name');
     }
     set({ isAuthenticated: false, user: null });
   },
@@ -105,9 +115,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const res = await apiClient.get('/auth/me');
       const user = extractUser(res.data?.data) ?? mockUser;
       set({ isAuthenticated: true, user });
+      persistUserName(user.name);
     } catch (err) {
       console.warn('Failed to refresh /auth/me, keeping offline session:', err);
       set({ isAuthenticated: true, user: mockUser });
+      persistUserName(mockUser.name);
     }
   },
   setMagicPhrase: async (newPhrase: string) => {

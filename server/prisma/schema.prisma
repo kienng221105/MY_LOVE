@@ -71,6 +71,8 @@ model LoveLetter {
   userId      String?
   user        User?     @relation(fields: [userId], references: [id])
   createdAt   DateTime  @default(now())
+
+  reactions Reaction[]
 }
 
 model DiaryEntry {
@@ -86,6 +88,41 @@ model DiaryEntry {
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+
+  reactions Reaction[]
+}
+
+/// Reaction (cảm xúc) của 1 user trên 1 target (thư yêu hoặc nhật ký).
+/// Mỗi user chỉ có tối đa 1 reaction cho mỗi target — bấm lại để bỏ,
+/// bấm emoji khác để đổi. reactionBy luôn là tên người đã bấm.
+model Reaction {
+  id          String      @id @default(uuid())
+  type        ReactionType
+  reactionBy  String      // 'Kien' | 'Love' — người đã thả cảm xúc
+  targetType  ReactionTarget
+  letterId    String?
+  letter      LoveLetter? @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  diaryId     String?
+  diary       DiaryEntry? @relation(fields: [diaryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+
+  @@unique([reactionBy, letterId])
+  @@unique([reactionBy, diaryId])
+  @@index([letterId])
+  @@index([diaryId])
+}
+
+enum ReactionType {
+  HEART
+  CRY
+  LAUGH
+  ANGRY
+  HUG
+}
+
+enum ReactionTarget {
+  LETTER
+  DIARY
 }
 
 model Song {

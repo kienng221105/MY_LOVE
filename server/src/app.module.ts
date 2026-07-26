@@ -9,6 +9,7 @@ import { MemoriesModule } from './modules/memories/memories.module';
 import { LettersModule } from './modules/letters/letters.module';
 import { DiaryModule } from './modules/diary/diary.module';
 import { MusicModule } from './modules/music/music.module';
+import { ReactionsModule } from './modules/reactions/reactions.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -30,6 +31,7 @@ import { AppController } from './app.controller';
     LettersModule,
     DiaryModule,
     MusicModule,
+    ReactionsModule,
   ],
   providers: [
     {

@@ -5,6 +5,7 @@ import { Photo } from '@/types/gallery';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { ImageLightbox } from '@/components/common/ImageLightbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/utils/date';
 import DateRangeFilter, {
@@ -17,6 +18,7 @@ export default function GalleryPage() {
   const { photos, albums, deletePhoto } = useDataStore();
   const [activeAlbum, setActiveAlbum] = useState<string>('all');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
   const { openUploadModal } = useDialogStore();
   const { showToast } = useNotificationStore();
@@ -158,12 +160,24 @@ export default function GalleryPage() {
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
 
-              <div className="flex-1 h-80 md:h-[450px] rounded-2xl overflow-hidden shadow-md">
+              <div className="flex-1 h-80 md:h-[450px] rounded-2xl overflow-hidden shadow-md relative group/lightbox bg-black/5">
                 <img
                   src={selectedPhoto.url}
                   alt={selectedPhoto.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-zoom-in"
+                  onClick={() => setLightboxSrc(selectedPhoto.url)}
                 />
+                <button
+                  onClick={() => setLightboxSrc(selectedPhoto.url)}
+                  className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-md text-white font-heading font-bold text-xs flex items-center gap-1 opacity-0 group-hover/lightbox:opacity-100 transition-opacity hover:bg-primary"
+                  title="Mở lightbox ảnh gốc — giữ nguyên size gốc"
+                >
+                  <span className="material-symbols-outlined text-base">open_in_full</span>
+                  Xem ảnh gốc
+                </button>
+                <p className="absolute bottom-3 left-3 px-2 py-1 rounded-full bg-black/55 backdrop-blur-md text-white font-quicksand text-[10px] opacity-0 group-hover/lightbox:opacity-100 transition-opacity">
+                  Bấm để xem ảnh gốc size đầy đủ
+                </p>
               </div>
 
               <div className="w-full md:w-80 flex flex-col justify-between space-y-4">
@@ -205,6 +219,16 @@ export default function GalleryPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ImageLightbox — giữ size gốc ảnh (bỏ Cloudinary transform) */}
+      <ImageLightbox
+        src={lightboxSrc}
+        alt={selectedPhoto?.title}
+        title={selectedPhoto?.title}
+        caption={selectedPhoto?.caption}
+        date={selectedPhoto ? formatDate(selectedPhoto.date) : undefined}
+        onClose={() => setLightboxSrc(null)}
+      />
     </main>
   );
 }

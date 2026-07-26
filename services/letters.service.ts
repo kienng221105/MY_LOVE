@@ -24,9 +24,9 @@ function unwrapError(err: any, fallback: string): never {
 }
 
 export class LettersService {
-  static async getLetters(): Promise<LoveLetter[]> {
+  static async getLetters(me: 'Kien' | 'Love' = 'Kien'): Promise<LoveLetter[]> {
     try {
-      const res = await apiClient.get('/letters');
+      const res = await apiClient.get('/letters', { params: { me } });
       return res.data?.data || [];
     } catch (err) {
       unwrapError(err, 'Không tải được danh sách thư yêu');
@@ -34,10 +34,11 @@ export class LettersService {
   }
 
   static async createLetter(
-    letter: Omit<LoveLetter, 'id'>
+    letter: Omit<LoveLetter, 'id'>,
+    me: 'Kien' | 'Love' = 'Kien'
   ): Promise<LoveLetter> {
     try {
-      const res = await apiClient.post('/letters', letter);
+      const res = await apiClient.post('/letters', letter, { params: { me } });
       if (!res.data?.data) {
         throw new LettersApiError('Phản hồi lưu thư không hợp lệ');
       }
