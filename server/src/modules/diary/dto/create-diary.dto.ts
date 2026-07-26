@@ -9,8 +9,33 @@ import {
   IsIn,
 } from 'class-validator';
 
-export const DIARY_MOODS = ['happy', 'romantic', 'cozy', 'miss_you'] as const;
-export const DIARY_WEATHERS = ['sunny', 'rainy', 'starry', 'cloudy'] as const;
+export const DIARY_MOODS = [
+  'happy',
+  'romantic',
+  'cozy',
+  'miss_you',
+  'excited',
+  'proud',
+  'grateful',
+  'playful',
+  'thoughtful',
+  'tired',
+  'anxious',
+  'heartbroken',
+] as const;
+
+export const DIARY_WEATHERS = [
+  'sunny',
+  'rainy',
+  'starry',
+  'cloudy',
+  'partly_cloudy',
+  'thunder',
+  'snowy',
+  'windy',
+  'foggy',
+  'rainbow',
+] as const;
 export const DIARY_AUTHORS = ['Kien', 'Love'] as const;
 
 export class CreateDiaryDto {
@@ -31,7 +56,8 @@ export class CreateDiaryDto {
   content: string;
 
   @ApiProperty({
-    description: 'Tâm trạng (happy, romantic, cozy, miss_you)',
+    description:
+      'Tâm trạng (happy, romantic, cozy, miss_you, excited, proud, grateful, playful, thoughtful, tired, anxious, heartbroken)',
     example: 'cozy',
   })
   @IsString()
@@ -39,7 +65,8 @@ export class CreateDiaryDto {
   mood: string;
 
   @ApiProperty({
-    description: 'Thời tiết (sunny, rainy, starry, cloudy)',
+    description:
+      'Thời tiết (sunny, rainy, starry, cloudy, partly_cloudy, thunder, snowy, windy, foggy, rainbow)',
     example: 'starry',
   })
   @IsString()
