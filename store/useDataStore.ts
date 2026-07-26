@@ -57,7 +57,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       }
     }
 
-    // 2. Sync in background with Neon Database Cloud API
+    // 2. Sync and Auto-migrate local data to Neon Database Cloud API
     try {
       const [apiPhotos, apiMemories, apiLetters, apiDiary] = await Promise.all([
         GalleryService.getPhotos(),
@@ -66,16 +66,82 @@ export const useDataStore = create<DataStore>((set, get) => ({
         DiaryService.getEntries(),
       ]);
 
-      if (apiPhotos.length > 0 || apiMemories.length > 0 || apiLetters.length > 0 || apiDiary.length > 0) {
-        const newState = {
-          photos: apiPhotos.length > 0 ? apiPhotos : get().photos,
-          memories: apiMemories.length > 0 ? apiMemories : get().memories,
-          letters: apiLetters.length > 0 ? apiLetters : get().letters,
-          diaryEntries: apiDiary.length > 0 ? apiDiary : get().diaryEntries,
-        };
-        set(newState);
-        saveToStorage(get());
+      const currentLocal = get();
+
+      // Auto-migrate photos if Cloud DB is empty
+      if (apiPhotos.length === 0 && currentLocal.photos.length > 0) {
+        for (const p of currentLocal.photos) {
+          if (p.url && !p.url.startsWith('blob:')) {
+            await GalleryService.addPhoto({
+              url: p.url,
+              title: p.title || 'Kỷ niệm',
+              date: p.date || new Date().toISOString().split('T')[0],
+              caption: p.caption || '',
+            });
+          }
+        }
       }
+
+      // Auto-migrate letters if Cloud DB is empty
+      if (apiLetters.length === 0 && currentLocal.letters.length > 0) {
+        for (const l of currentLocal.letters) {
+          await LettersService.createLetter({
+            sender: l.sender || 'Kiên',
+            recipient: l.recipient || 'Trà',
+            title: l.title || '',
+            content: l.content || '',
+            sentDate: l.sentDate || new Date().toISOString().split('T')[0],
+            isRead: l.isRead ?? false,
+            bgStyle: l.bgStyle || 'pink',
+          });
+        }
+      }
+
+      // Auto-migrate diary entries if Cloud DB is empty
+      if (apiDiary.length === 0 && currentLocal.diaryEntries.length > 0) {
+        for (const d of currentLocal.diaryEntries) {
+          await DiaryService.createEntry({
+            title: d.title || '',
+            content: d.content || '',
+            mood: d.mood || 'romantic',
+            weather: d.weather || 'sunny',
+            author: d.author || 'Kien',
+            date: d.date || new Date().toISOString().split('T')[0],
+            imageUrls: d.imageUrls || [],
+          });
+        }
+      }
+
+      // Auto-migrate memories if Cloud DB is empty
+      if (apiMemories.length === 0 && currentLocal.memories.length > 0) {
+        for (const m of currentLocal.memories) {
+          await MemoriesService.addMemory({
+            title: m.title || 'Cột mốc mới',
+            date: m.date || new Date().toISOString().split('T')[0],
+            description: m.description || '',
+            location: m.location || '',
+            category: m.category || 'special',
+            imageUrl: m.imageUrl || '',
+          });
+        }
+      }
+
+      // Final fetch from Cloud DB
+      const [finalPhotos, finalMemories, finalLetters, finalDiary] = await Promise.all([
+        GalleryService.getPhotos(),
+        MemoriesService.getMemories(),
+        LettersService.getLetters(),
+        DiaryService.getEntries(),
+      ]);
+
+      set({
+        photos: finalPhotos.length > 0 ? finalPhotos : currentLocal.photos,
+        memories: finalMemories.length > 0 ? finalMemories : currentLocal.memories,
+        letters: finalLetters.length > 0 ? finalLetters : currentLocal.letters,
+        diaryEntries: finalDiary.length > 0 ? finalDiary : currentLocal.diaryEntries,
+      });
+
+      saveToStorage(get());
     } catch (e) {
       console.warn('Backend API offline, operating in LocalStorage mode');
     }
