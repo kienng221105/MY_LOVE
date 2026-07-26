@@ -1,29 +1,40 @@
+import { apiClient } from './api';
 import { Photo, Album } from '@/types/gallery';
-import { mockPhotos, mockAlbums } from '@/mock/photos';
-
-let memoryPhotos: Photo[] = [...mockPhotos];
 
 export class GalleryService {
   static async getPhotos(): Promise<Photo[]> {
-    // TODO: Replace with NestJS endpoint GET /api/photos
-    return new Promise((resolve) => setTimeout(() => resolve(memoryPhotos), 200));
+    try {
+      const res = await apiClient.get('/gallery/photos');
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
   }
 
   static async getAlbums(): Promise<Album[]> {
-    // TODO: Replace with NestJS endpoint GET /api/albums
-    return new Promise((resolve) => setTimeout(() => resolve(mockAlbums), 200));
+    try {
+      const res = await apiClient.get('/gallery/albums');
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
   }
 
-  static async addPhoto(photo: Omit<Photo, 'id'>): Promise<Photo> {
-    // TODO: Replace with NestJS endpoint POST /api/photos
-    const newPhoto: Photo = { ...photo, id: `photo_${Date.now()}` };
-    memoryPhotos = [newPhoto, ...memoryPhotos];
-    return newPhoto;
+  static async addPhoto(photo: Omit<Photo, 'id'>): Promise<Photo | null> {
+    try {
+      const res = await apiClient.post('/gallery/photos', photo);
+      return res.data?.data || null;
+    } catch {
+      return null;
+    }
   }
 
   static async deletePhoto(id: string): Promise<boolean> {
-    // TODO: Replace with NestJS endpoint DELETE /api/photos/:id
-    memoryPhotos = memoryPhotos.filter((p) => p.id !== id);
-    return true;
+    try {
+      await apiClient.delete(`/gallery/photos/${id}`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

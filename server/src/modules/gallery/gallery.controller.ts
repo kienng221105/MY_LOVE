@@ -3,8 +3,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { GalleryService } from './gallery.service';
 import { CreatePhotoDto } from './dto/create-photo.dto';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 @ApiTags('Gallery & Albums')
-@ApiBearerAuth()
+@Public()
 @Controller('gallery')
 export class GalleryController {
   constructor(private readonly galleryService: GalleryService) {}

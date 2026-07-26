@@ -3,8 +3,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DiaryService } from './diary.service';
 import { CreateDiaryDto } from './dto/create-diary.dto';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 @ApiTags('Love Diary')
-@ApiBearerAuth()
+@Public()
 @Controller('diary')
 export class DiaryController {
   constructor(private readonly diaryService: DiaryService) {}

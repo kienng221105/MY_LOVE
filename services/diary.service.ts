@@ -1,24 +1,31 @@
+import { apiClient } from './api';
 import { DiaryEntry } from '@/types/diary';
-import { mockDiaryEntries } from '@/mock/diary';
-
-let memoryDiary: DiaryEntry[] = [...mockDiaryEntries];
 
 export class DiaryService {
   static async getEntries(): Promise<DiaryEntry[]> {
-    // TODO: Replace with NestJS endpoint GET /api/diary
-    return new Promise((resolve) => setTimeout(() => resolve(memoryDiary), 200));
+    try {
+      const res = await apiClient.get('/diary');
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
   }
 
-  static async createEntry(entry: Omit<DiaryEntry, 'id'>): Promise<DiaryEntry> {
-    // TODO: Replace with NestJS endpoint POST /api/diary
-    const newEntry: DiaryEntry = { ...entry, id: `diary_${Date.now()}` };
-    memoryDiary = [newEntry, ...memoryDiary];
-    return newEntry;
+  static async createEntry(entry: Omit<DiaryEntry, 'id'>): Promise<DiaryEntry | null> {
+    try {
+      const res = await apiClient.post('/diary', entry);
+      return res.data?.data || null;
+    } catch {
+      return null;
+    }
   }
 
   static async deleteEntry(id: string): Promise<boolean> {
-    // TODO: Replace with NestJS endpoint DELETE /api/diary/:id
-    memoryDiary = memoryDiary.filter((e) => e.id !== id);
-    return true;
+    try {
+      await apiClient.delete(`/diary/${id}`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

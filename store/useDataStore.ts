@@ -3,6 +3,10 @@ import { Photo, Album } from '@/types/gallery';
 import { MemoryMilestone } from '@/types/memory';
 import { LoveLetter } from '@/types/letter';
 import { DiaryEntry } from '@/types/diary';
+import { GalleryService } from '@/services/gallery.service';
+import { MemoriesService } from '@/services/memories.service';
+import { LettersService } from '@/services/letters.service';
+import { DiaryService } from '@/services/diary.service';
 
 interface DataStore {
   photos: Photo[];
@@ -12,19 +16,19 @@ interface DataStore {
   diaryEntries: DiaryEntry[];
 
   // Actions
-  addPhoto: (photo: Omit<Photo, 'id'>) => void;
-  deletePhoto: (id: string) => void;
+  addPhoto: (photo: Omit<Photo, 'id'>) => Promise<void>;
+  deletePhoto: (id: string) => Promise<void>;
 
-  addMemory: (memory: Omit<MemoryMilestone, 'id'>) => void;
+  addMemory: (memory: Omit<MemoryMilestone, 'id'>) => Promise<void>;
   toggleFavoriteMemory: (id: string) => void;
 
-  addLetter: (letter: Omit<LoveLetter, 'id'>) => void;
-  markLetterRead: (id: string) => void;
+  addLetter: (letter: Omit<LoveLetter, 'id'>) => Promise<void>;
+  markLetterRead: (id: string) => Promise<void>;
 
-  addDiaryEntry: (entry: Omit<DiaryEntry, 'id'>) => void;
-  deleteDiaryEntry: (id: string) => void;
+  addDiaryEntry: (entry: Omit<DiaryEntry, 'id'>) => Promise<void>;
+  deleteDiaryEntry: (id: string) => Promise<void>;
 
-  initData: () => void;
+  initData: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'ourspace_app_data';
@@ -36,7 +40,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
   letters: [],
   diaryEntries: [],
 
-  initData: () => {
+  initData: async () => {
+    // 1. Fast initial load from LocalStorage cache
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -51,32 +56,72 @@ export const useDataStore = create<DataStore>((set, get) => ({
         } catch (e) {}
       }
     }
+
+    // 2. Sync in background with Neon Database Cloud API
+    try {
+      const [apiPhotos, apiMemories, apiLetters, apiDiary] = await Promise.all([
+        GalleryService.getPhotos(),
+        MemoriesService.getMemories(),
+        LettersService.getLetters(),
+        DiaryService.getEntries(),
+      ]);
+
+      if (apiPhotos.length > 0 || apiMemories.length > 0 || apiLetters.length > 0 || apiDiary.length > 0) {
+        const newState = {
+          photos: apiPhotos.length > 0 ? apiPhotos : get().photos,
+          memories: apiMemories.length > 0 ? apiMemories : get().memories,
+          letters: apiLetters.length > 0 ? apiLetters : get().letters,
+          diaryEntries: apiDiary.length > 0 ? apiDiary : get().diaryEntries,
+        };
+        set(newState);
+        saveToStorage(get());
+      }
+    } catch (e) {
+      console.warn('Backend API offline, operating in LocalStorage mode');
+    }
   },
 
-  addPhoto: (photoData) => {
-    const newPhoto: Photo = {
+  addPhoto: async (photoData) => {
+    const localPhoto: Photo = {
       ...photoData,
       id: `photo_${Date.now()}`,
     };
-    const updated = [newPhoto, ...get().photos];
+    const updated = [localPhoto, ...get().photos];
     set({ photos: updated });
     saveToStorage(get());
+
+    // Sync to Cloud DB
+    const apiResult = await GalleryService.addPhoto(photoData);
+    if (apiResult) {
+      const synced = get().photos.map((p) => (p.id === localPhoto.id ? apiResult : p));
+      set({ photos: synced });
+      saveToStorage(get());
+    }
   },
 
-  deletePhoto: (id) => {
+  deletePhoto: async (id) => {
     const updated = get().photos.filter((p) => p.id !== id);
     set({ photos: updated });
     saveToStorage(get());
+    await GalleryService.deletePhoto(id);
   },
 
-  addMemory: (memoryData) => {
-    const newMemory: MemoryMilestone = {
+  addMemory: async (memoryData) => {
+    const localMemory: MemoryMilestone = {
       ...memoryData,
       id: `memory_${Date.now()}`,
     };
-    const updated = [newMemory, ...get().memories];
+    const updated = [localMemory, ...get().memories];
     set({ memories: updated });
     saveToStorage(get());
+
+    // Sync to Cloud DB
+    const apiResult = await MemoriesService.addMemory(memoryData);
+    if (apiResult) {
+      const synced = get().memories.map((m) => (m.id === localMemory.id ? apiResult : m));
+      set({ memories: synced });
+      saveToStorage(get());
+    }
   },
 
   toggleFavoriteMemory: (id) => {
@@ -87,38 +132,56 @@ export const useDataStore = create<DataStore>((set, get) => ({
     saveToStorage(get());
   },
 
-  addLetter: (letterData) => {
-    const newLetter: LoveLetter = {
+  addLetter: async (letterData) => {
+    const localLetter: LoveLetter = {
       ...letterData,
       id: `letter_${Date.now()}`,
     };
-    const updated = [newLetter, ...get().letters];
+    const updated = [localLetter, ...get().letters];
     set({ letters: updated });
     saveToStorage(get());
+
+    // Sync to Cloud DB
+    const apiResult = await LettersService.createLetter(letterData);
+    if (apiResult) {
+      const synced = get().letters.map((l) => (l.id === localLetter.id ? apiResult : l));
+      set({ letters: synced });
+      saveToStorage(get());
+    }
   },
 
-  markLetterRead: (id) => {
+  markLetterRead: async (id) => {
     const updated = get().letters.map((l) =>
       l.id === id ? { ...l, isRead: true } : l
     );
     set({ letters: updated });
     saveToStorage(get());
+    await LettersService.markAsRead(id);
   },
 
-  addDiaryEntry: (entryData) => {
-    const newEntry: DiaryEntry = {
+  addDiaryEntry: async (entryData) => {
+    const localEntry: DiaryEntry = {
       ...entryData,
       id: `diary_${Date.now()}`,
     };
-    const updated = [newEntry, ...get().diaryEntries];
+    const updated = [localEntry, ...get().diaryEntries];
     set({ diaryEntries: updated });
     saveToStorage(get());
+
+    // Sync to Cloud DB
+    const apiResult = await DiaryService.createEntry(entryData);
+    if (apiResult) {
+      const synced = get().diaryEntries.map((d) => (d.id === localEntry.id ? apiResult : d));
+      set({ diaryEntries: synced });
+      saveToStorage(get());
+    }
   },
 
-  deleteDiaryEntry: (id) => {
+  deleteDiaryEntry: async (id) => {
     const updated = get().diaryEntries.filter((d) => d.id !== id);
     set({ diaryEntries: updated });
     saveToStorage(get());
+    await DiaryService.deleteEntry(id);
   },
 }));
 

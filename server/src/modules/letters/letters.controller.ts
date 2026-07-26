@@ -3,8 +3,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LettersService } from './letters.service';
 import { CreateLetterDto } from './dto/create-letter.dto';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 @ApiTags('Love Letters')
-@ApiBearerAuth()
+@Public()
 @Controller('letters')
 export class LettersController {
   constructor(private readonly lettersService: LettersService) {}

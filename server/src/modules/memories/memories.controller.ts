@@ -3,8 +3,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MemoriesService } from './memories.service';
 import { CreateMemoryDto } from './dto/create-memory.dto';
 
+import { Public } from '../../common/decorators/public.decorator';
+
 @ApiTags('Memories & Journey')
-@ApiBearerAuth()
+@Public()
 @Controller('memories')
 export class MemoriesController {
   constructor(private readonly memoriesService: MemoriesService) {}
