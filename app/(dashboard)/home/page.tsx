@@ -8,13 +8,25 @@ import { useNotificationStore } from '@/store/useNotificationStore';
 import { AvatarCropModal } from '@/components/common/AvatarCropModal';
 import { fileToBase64 } from '@/utils/file';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 
 export default function HomePage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { photos, letters, diaryEntries } = useDataStore();
   const { openUploadModal, openWriteLetter, openCreateDiary } = useDialogStore();
+
+  const handleOpenWriteLetter = () => {
+    openWriteLetter();
+    router.push('/thu-yeu');
+  };
+
+  const handleOpenCreateDiary = () => {
+    openCreateDiary();
+    router.push('/nhat-ky');
+  };
   const { showToast } = useNotificationStore();
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -278,7 +290,7 @@ export default function HomePage() {
       {/* Quick Action Bubbles */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <button
-          onClick={openWriteLetter}
+          onClick={handleOpenWriteLetter}
           className="glass-panel p-5 rounded-3xl text-left hover:scale-105 transition-all group border border-primary/20"
         >
           <div className="w-12 h-12 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center mb-3 group-hover:rotate-6 transition-transform">
@@ -289,7 +301,7 @@ export default function HomePage() {
         </button>
 
         <button
-          onClick={openCreateDiary}
+          onClick={handleOpenCreateDiary}
           className="glass-panel p-5 rounded-3xl text-left hover:scale-105 transition-all group border border-primary/20"
         >
           <div className="w-12 h-12 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center mb-3 group-hover:rotate-6 transition-transform">
@@ -386,7 +398,7 @@ export default function HomePage() {
               <div className="bg-surface-container-low p-6 rounded-2xl border border-dashed border-secondary/30 text-center space-y-2">
                 <span className="material-symbols-outlined text-3xl text-secondary/60">mark_email_read</span>
                 <p className="font-quicksand text-xs font-bold text-on-surface-variant">Chưa có lá thư nào</p>
-                <button onClick={openWriteLetter} className="text-xs font-heading font-bold text-secondary hover:underline">
+                <button onClick={handleOpenWriteLetter} className="text-xs font-heading font-bold text-secondary hover:underline">
                   + Viết thư đầu tiên
                 </button>
               </div>
@@ -425,7 +437,7 @@ export default function HomePage() {
               <div className="bg-surface-container-low p-6 rounded-2xl border border-dashed border-tertiary/30 text-center space-y-2">
                 <span className="material-symbols-outlined text-3xl text-tertiary/60">menu_book</span>
                 <p className="font-quicksand text-xs font-bold text-on-surface-variant">Chưa có bài nhật ký nào</p>
-                <button onClick={openCreateDiary} className="text-xs font-heading font-bold text-tertiary hover:underline">
+                <button onClick={handleOpenCreateDiary} className="text-xs font-heading font-bold text-tertiary hover:underline">
                   + Ghi nhật ký đầu tiên
                 </button>
               </div>
