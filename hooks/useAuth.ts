@@ -5,7 +5,7 @@ export function useAuth() {
   const { isAuthenticated, user, login, logout, checkSession } = useAuthStore();
 
   useEffect(() => {
-    checkSession();
+    void checkSession();
   }, [checkSession]);
 
   return {

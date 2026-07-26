@@ -18,20 +18,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: { sub: string; email?: string }) {
-    // If database user exists, load it; otherwise return mock payload
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     }).catch(() => null);
 
     if (user) {
-      return user;
+      return {
+        id: user.id,
+        name: user.name,
+        partnerName: user.partnerName,
+        anniversaryDate: new Date(user.anniversaryDate).toISOString(),
+        avatarUrl: user.avatarUrl ?? null,
+        partnerAvatarUrl: user.partnerAvatarUrl ?? null,
+        timerVersion: typeof user.timerVersion === 'number' ? user.timerVersion : 0,
+      };
     }
 
     return {
       id: payload.sub || 'user_1',
       name: 'Kiên',
       partnerName: 'Em Yêu',
-      anniversaryDate: '2023-12-24',
+      anniversaryDate: '2023-12-24T00:00:00.000Z',
+      timerVersion: 0,
     };
   }
 }

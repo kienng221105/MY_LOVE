@@ -9,30 +9,31 @@ export class LettersService {
   async getLetters() {
     return this.prisma.loveLetter.findMany({
       orderBy: { sentDate: 'desc' },
-    }).catch(() => []);
+    });
   }
 
   async createLetter(dto: CreateLetterDto) {
+    const sentDate = dto.sentDate ? new Date(dto.sentDate) : new Date();
     return this.prisma.loveLetter.create({
       data: {
         sender: dto.sender,
         recipient: dto.recipient,
-        title: dto.title,
+        title: dto.title?.trim() || '',
         content: dto.content,
+        sentDate,
         openDate: dto.openDate ? new Date(dto.openDate) : null,
         bgStyle: dto.bgStyle || 'pink',
+        isRead: dto.isRead ?? false,
+        isFavorite: dto.isFavorite ?? false,
       },
     });
   }
 
   async markAsRead(id: string) {
-    try {
-      return await this.prisma.loveLetter.update({
-        where: { id },
-        data: { isRead: true },
-      });
-    } catch {
-      return { success: true };
-    }
+    const updated = await this.prisma.loveLetter.update({
+      where: { id },
+      data: { isRead: true },
+    });
+    return updated;
   }
 }

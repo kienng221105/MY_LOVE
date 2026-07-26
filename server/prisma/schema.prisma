@@ -13,6 +13,7 @@ model User {
   name             String
   partnerName      String
   anniversaryDate  DateTime @default("2023-12-24T00:00:00.000Z")
+  timerVersion      Int      @default(0)
   passwordHash     String
   avatarUrl        String?
   partnerAvatarUrl String?

@@ -1,52 +1,125 @@
 'use client';
 
+import { useState } from 'react';
 import { useDialogStore } from '@/store/useDialogStore';
-import { useUpload } from '@/hooks/useUpload';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { uploadToCloudinary } from '@/utils/file';
+import { uploadImageFile, isHttpUpstreamUrl } from '@/utils/file';
 import { AnimatePresence, motion } from 'framer-motion';
+
+interface PendingItem {
+  id: string;
+  previewUrl: string;
+  file: File;
+  uploading: boolean;
+  uploadedUrl?: string;
+  error?: string;
+}
 
 export function UploadModal() {
   const { isUploadModalOpen, closeUploadModal } = useDialogStore();
-  const { files, isUploading, addFiles, removeFile, clearAll } = useUpload();
   const { addPhoto } = useDataStore();
   const { showToast } = useNotificationStore();
+
+  const [pending, setPending] = useState<PendingItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!isUploadModalOpen) return null;
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      addFiles(Array.from(e.dataTransfer.files));
+      enqueueFiles(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      addFiles(Array.from(e.target.files));
+      enqueueFiles(Array.from(e.target.files));
+      e.target.value = '';
     }
   };
 
-  const handleSave = async () => {
-    const cloudinaryPhotos = await Promise.all(
-      files.map(async (f) => {
-        const url = await uploadToCloudinary(f.file);
-        return {
-          url,
-          title: f.file.name.replace(/\.[^/.]+$/, ''),
-          date: new Date().toISOString().split('T')[0],
-          caption: 'Kỷ niệm mới thêm',
-        };
-      })
-    );
+  const enqueueFiles = (files: File[]) => {
+    const items: PendingItem[] = files.map((file) => ({
+      id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      previewUrl: URL.createObjectURL(file),
+      file,
+      uploading: true,
+    }));
+    setPending((prev) => [...prev, ...items]);
 
-    cloudinaryPhotos.forEach((photo) => addPhoto(photo));
+    void Promise.allSettled(
+      files.map((file, index) =>
+        uploadImageFile(file).then((url) => ({ index, url }))
+      )
+    ).then((results) => {
+      setPending((prev) =>
+        prev.map((item) => {
+          const slot = items.findIndex((i) => i.id === item.id);
+          if (slot === -1) return item;
+          const result = results[slot];
+          if (!result || result.status === 'rejected') {
+            const reason = result?.reason as any;
+            return {
+              ...item,
+              uploading: false,
+              error: reason?.message || 'Lỗi không xác định',
+            };
+          }
+          return {
+            ...item,
+            uploading: false,
+            uploadedUrl: result.value.url,
+          };
+        })
+      );
 
-    showToast('Tải ảnh kỷ niệm thành công! 💖');
-    clearAll();
-    closeUploadModal();
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        showToast(`Không upload được ${failed} ảnh. Vui lòng thử lại.`, 'error');
+      }
+    });
   };
+
+  const removeItem = (id: string) => {
+    setPending((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleSave = async () => {
+    if (isSaving) return;
+    const completed = pending.filter((p) => p.uploadedUrl && !p.error);
+    if (completed.length === 0) {
+      showToast('Vui lòng chờ ảnh upload xong hoặc thêm ảnh mới', 'info');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      for (const item of completed) {
+        const url = item.uploadedUrl as string;
+        if (!isHttpUpstreamUrl(url)) continue;
+        await addPhoto({
+          url,
+          title: item.file.name.replace(/\.[^/.]+$/, ''),
+          date: new Date().toISOString(),
+          caption: 'Kỷ niệm mới thêm',
+        });
+      }
+      showToast('Tải ảnh kỷ niệm thành công! 💖');
+      setPending([]);
+      closeUploadModal();
+    } catch (err: any) {
+      showToast(
+        err?.message || 'Không lưu được ảnh vào album, vui lòng thử lại 💔',
+        'error'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const hasReadyItems = pending.some((p) => p.uploadedUrl && !p.error);
+  const isAnyUploading = pending.some((p) => p.uploading);
 
   return (
     <AnimatePresence>
@@ -82,7 +155,7 @@ export function UploadModal() {
             <input
               type="file"
               multiple
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleFileInput}
               className="hidden"
               id="file-upload-input"
@@ -101,9 +174,9 @@ export function UploadModal() {
           </div>
 
           {/* Upload items preview list */}
-          {files.length > 0 && (
+          {pending.length > 0 && (
             <div className="max-h-48 overflow-y-auto space-y-2 mb-4 pr-1">
-              {files.map((item) => (
+              {pending.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center gap-3 p-2 bg-surface-container rounded-xl border border-primary/10"
@@ -117,15 +190,16 @@ export function UploadModal() {
                     <p className="font-heading font-bold text-xs text-on-surface truncate">
                       {item.file.name}
                     </p>
-                    <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-1">
-                      <div
-                        className="bg-primary h-full transition-all duration-300"
-                        style={{ width: `${item.progress}%` }}
-                      />
-                    </div>
+                    <p className="font-quicksand text-[11px] text-outline font-semibold">
+                      {item.error
+                        ? `Lỗi: ${item.error}`
+                        : item.uploading
+                          ? 'Đang upload...'
+                          : 'Đã upload xong'}
+                    </p>
                   </div>
                   <button
-                    onClick={() => removeFile(item.id)}
+                    onClick={() => removeItem(item.id)}
                     className="text-on-surface-variant hover:text-error"
                   >
                     <span className="material-symbols-outlined text-base">delete</span>
@@ -145,10 +219,10 @@ export function UploadModal() {
             </button>
             <button
               onClick={handleSave}
-              disabled={files.length === 0 || isUploading}
+              disabled={!hasReadyItems || isAnyUploading || isSaving}
               className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100"
             >
-              Lưu vào Album
+              {isSaving ? 'Đang lưu...' : 'Lưu vào Album'}
             </button>
           </div>
         </motion.div>

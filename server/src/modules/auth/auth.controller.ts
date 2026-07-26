@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -33,5 +33,21 @@ export class AuthController {
       message: 'Lấy thông tin tài khoản thành công',
       data: user,
     };
+  }
+
+  @Get('timer')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lấy thời điểm bắt đầu chính thức (đồng bộ nhiều thiết bị)' })
+  async getTimer(@CurrentUser() user: any) {
+    const data = await this.authService.getTimer(user.id);
+    return { message: 'Lấy thời điểm bắt đầu thành công', data };
+  }
+
+  @Patch('timer/reset')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đặt lại thời điểm bắt đầu từ phía server' })
+  async resetTimer(@CurrentUser() user: any) {
+    const data = await this.authService.resetTimer(user.id);
+    return { message: 'Đã đặt lại thời điểm bắt đầu', data };
   }
 }

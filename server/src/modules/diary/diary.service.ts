@@ -9,28 +9,27 @@ export class DiaryService {
   async getEntries() {
     return this.prisma.diaryEntry.findMany({
       orderBy: { date: 'desc' },
-    }).catch(() => []);
+    });
   }
 
   async createEntry(dto: CreateDiaryDto) {
+    const date = dto.date ? new Date(dto.date) : new Date();
     return this.prisma.diaryEntry.create({
       data: {
-        title: dto.title,
+        title: dto.title?.trim() || '',
         content: dto.content,
         mood: dto.mood,
         weather: dto.weather,
+        date,
         author: dto.author || 'Kien',
         imageUrls: dto.imageUrls || [],
+        isDraft: dto.isDraft ?? false,
       },
     });
   }
 
   async deleteEntry(id: string) {
-    try {
-      await this.prisma.diaryEntry.delete({ where: { id } });
-      return true;
-    } catch {
-      return true;
-    }
+    await this.prisma.diaryEntry.delete({ where: { id } });
+    return { id };
   }
 }

@@ -17,16 +17,17 @@ export default function DashboardLayout({
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    checkSession();
-    initData();
-    if (typeof window !== 'undefined') {
-      const isAuth = localStorage.getItem('ourspace_auth') === 'true';
-      if (!isAuth) {
-        router.replace('/');
-      } else {
-        setIsAuthorized(true);
+    void checkSession().then(() => {
+      if (typeof window !== 'undefined') {
+        const isAuth = localStorage.getItem('ourspace_auth') === 'true';
+        if (!isAuth) {
+          router.replace('/');
+        } else {
+          setIsAuthorized(true);
+        }
       }
-    }
+    });
+    void initData();
   }, [router, checkSession, initData]);
 
   if (isAuthorized === null) {

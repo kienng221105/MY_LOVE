@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateLetterDto {
   @ApiProperty({ description: 'Người gửi', example: 'Kiên' })
@@ -7,29 +13,38 @@ export class CreateLetterDto {
   @IsNotEmpty()
   sender: string;
 
-  @ApiProperty({ description: 'Người nhận', example: 'Em Yêu' })
+  @ApiProperty({ description: 'Người nhận', example: 'Trà' })
   @IsString()
   @IsNotEmpty()
   recipient: string;
 
-  @ApiProperty({ description: 'Tiêu đề lá thư', example: 'Gửi người con gái anh yêu' })
+  @ApiPropertyOptional({
+    description: 'Tiêu đề lá thư (tùy chọn)',
+    example: 'Gửi người con gái anh yêu',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  title: string;
+  title?: string;
 
   @ApiProperty({ description: 'Nội dung lá thư', example: 'Cảm ơn em vì tất cả...' })
   @IsString()
   @IsNotEmpty()
   content: string;
 
-  @ApiPropertyOptional({ description: 'Ngày gửi lá thư', example: '2026-07-26' })
+  @ApiPropertyOptional({
+    description: 'Ngày gửi lá thư (ISO-8601)',
+    example: '2026-07-26T00:00:00.000Z',
+  })
   @IsOptional()
-  @IsString()
+  @IsDateString()
   sentDate?: string;
 
-  @ApiPropertyOptional({ description: 'Ngày cho phép mở thư (Scheduled)', example: '2026-12-24' })
+  @ApiPropertyOptional({
+    description: 'Ngày cho phép mở thư (ISO-8601, Scheduled)',
+    example: '2026-12-24T00:00:00.000Z',
+  })
   @IsOptional()
-  @IsString()
+  @IsDateString()
   openDate?: string;
 
   @ApiPropertyOptional({ description: 'Màu nền lá thư', example: 'pink' })

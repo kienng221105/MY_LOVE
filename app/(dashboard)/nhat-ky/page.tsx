@@ -5,9 +5,16 @@ import { DiaryEntry, MoodType, WeatherType } from '@/types/diary';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { uploadToCloudinary } from '@/utils/file';
+import { uploadImageFile, isHttpUpstreamUrl } from '@/utils/file';
 import { formatDateTime } from '@/utils/date';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface PendingImage {
+  id: string;
+  url: string;
+  uploading: boolean;
+  error?: string;
+}
 
 export default function DiaryPage() {
   const { diaryEntries, addDiaryEntry, deleteDiaryEntry } = useDataStore();
@@ -20,8 +27,9 @@ export default function DiaryPage() {
   const [mood, setMood] = useState<MoodType>('happy');
   const [weather, setWeather] = useState<WeatherType>('sunny');
   const [author, setAuthor] = useState<'Kien' | 'Love'>('Kien');
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load draft from LocalStorage on mount
   useEffect(() => {
@@ -50,39 +58,98 @@ export default function DiaryPage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
-      const uploadedUrls = await Promise.all(
-        filesArray.map((file) => uploadToCloudinary(file))
+      const placeholders: PendingImage[] = filesArray.map((file) => ({
+        id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        url: URL.createObjectURL(file),
+        uploading: true,
+      }));
+      setPendingImages((prev) => [...prev, ...placeholders]);
+
+      const results = await Promise.allSettled(
+        filesArray.map((file, index) =>
+          uploadImageFile(file).then((url) => ({ index, url }))
+        )
       );
-      setSelectedImages((prev) => [...prev, ...uploadedUrls]);
+
+      setPendingImages((prev) =>
+        prev.map((item) => {
+          if (!placeholders.find((p) => p.id === item.id)) return item;
+          const result = results.find(
+            (r) => r.status === 'fulfilled' && r.value.index === placeholders.indexOf(item)
+          );
+          if (!result) return { ...item, uploading: false, error: 'Lỗi không xác định' };
+          const fulfilled = result as PromiseFulfilledResult<{ index: number; url: string }>;
+          return {
+            ...item,
+            url: fulfilled.value.url,
+            uploading: false,
+            error: undefined,
+          };
+        })
+      );
+
+      const failureMessages = results
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => r.status === 'rejected')
+        .map(({ i }) => filesArray[i]?.name)
+        .filter(Boolean);
+      if (failureMessages.length) {
+        showToast(
+          `Không upload được: ${failureMessages.join(', ')}`,
+          'error'
+        );
+      }
+      e.target.value = '';
     }
   };
 
-  const removeImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  const removeImage = (id: string) => {
+    setPendingImages((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content) return;
+    if (!content.trim() || isSaving) return;
 
-    addDiaryEntry({
-      date: new Date().toISOString().split('T')[0],
-      title,
-      content,
-      mood,
-      weather,
-      author,
-      imageUrls: selectedImages,
-    });
-
-    showToast('Đã lưu trang nhật ký ngọt ngào ✨');
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('ourspace_diary_draft');
+    const stillUploading = pendingImages.some((p) => p.uploading);
+    if (stillUploading) {
+      showToast('Ảnh đang upload, vui lòng đợi hoàn tất 📷', 'info');
+      return;
     }
-    closeCreateDiary();
-    setTitle('');
-    setContent('');
-    setSelectedImages([]);
+
+    const completedImages = pendingImages.filter((p) => !p.error);
+    const imageUrls = completedImages
+      .map((p) => p.url)
+      .filter((url) => isHttpUpstreamUrl(url));
+
+    setIsSaving(true);
+    try {
+      await addDiaryEntry({
+        date: new Date().toISOString(),
+        title,
+        content,
+        mood,
+        weather,
+        author,
+        imageUrls,
+      });
+
+      showToast('Đã lưu trang nhật ký ngọt ngào ✨');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ourspace_diary_draft');
+      }
+      closeCreateDiary();
+      setTitle('');
+      setContent('');
+      setPendingImages([]);
+    } catch (err: any) {
+      showToast(
+        err?.message || 'Không lưu được nhật ký, vui lòng thử lại 💔',
+        'error'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const moodEmojis: Record<MoodType, string> = {
@@ -134,14 +201,20 @@ export default function DiaryPage() {
               className="glass-panel p-6 sm:p-8 rounded-3xl border border-primary/20 hover:border-primary/40 transition-all space-y-4 relative group overflow-hidden"
             >
               {/* Delete button */}
-              <button
-                onClick={() => {
-                  deleteDiaryEntry(entry.id);
-                  showToast('Đã xóa bài nhật ký 💖');
-                }}
-                className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant hover:text-error z-10"
-                title="Xóa bài nhật ký"
-              >
+<button
+              onClick={() => {
+                deleteDiaryEntry(entry.id)
+                  .then(() => showToast('Đã xóa bài nhật ký 💖'))
+                  .catch((err: any) =>
+                    showToast(
+                      err?.message || 'Không xóa được nhật ký',
+                      'error'
+                    )
+                  );
+              }}
+              className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant hover:text-error z-10"
+              title="Xóa bài nhật ký"
+            >
                 <span className="material-symbols-outlined text-lg">delete</span>
               </button>
 
@@ -344,14 +417,24 @@ export default function DiaryPage() {
                   </label>
 
                   {/* Image Previews */}
-                  {selectedImages.length > 0 && (
+                  {pendingImages.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 mt-3">
-                      {selectedImages.map((src, index) => (
-                        <div key={index} className="relative h-20 rounded-xl overflow-hidden border border-primary/20 shadow-sm group">
-                          <img src={src} alt="preview" className="w-full h-full object-cover max-w-full" />
+                      {pendingImages.map((p) => (
+                        <div key={p.id} className="relative h-20 rounded-xl overflow-hidden border border-primary/20 shadow-sm group">
+                          <img src={p.url} alt="preview" className="w-full h-full object-cover max-w-full" />
+                          {p.uploading && (
+                            <div className="absolute inset-0 bg-on-surface/60 flex items-center justify-center text-white text-[10px] font-heading font-bold">
+                              Đang tải...
+                            </div>
+                          )}
+                          {p.error && (
+                            <div className="absolute inset-0 bg-error/80 flex items-center justify-center text-white text-[10px] font-heading font-bold text-center px-1">
+                              {p.error}
+                            </div>
+                          )}
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
+                            onClick={() => removeImage(p.id)}
                             className="absolute top-1 right-1 w-5 h-5 rounded-full bg-on-surface/70 text-white flex items-center justify-center hover:bg-error transition-colors"
                           >
                             <span className="material-symbols-outlined text-xs">close</span>
@@ -366,15 +449,17 @@ export default function DiaryPage() {
                   <button
                     type="button"
                     onClick={closeCreateDiary}
-                    className="px-5 py-2.5 rounded-full font-heading font-bold text-xs text-on-surface-variant hover:bg-surface-container"
+                    disabled={isSaving}
+                    className="px-5 py-2.5 rounded-full font-heading font-bold text-xs text-on-surface-variant hover:bg-surface-container disabled:opacity-50"
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform"
+                    disabled={isSaving}
+                    className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100"
                   >
-                    Lưu vào nhật ký
+                    {isSaving ? 'Đang lưu...' : 'Lưu vào nhật ký'}
                   </button>
                 </div>
               </form>

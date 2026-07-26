@@ -9,8 +9,26 @@ interface AuthStore {
   magicPhrase: string;
   login: (phrase: string) => Promise<boolean>;
   logout: () => void;
-  checkSession: () => void;
+  checkSession: () => Promise<void>;
   setMagicPhrase: (newPhrase: string) => Promise<void>;
+}
+
+function extractUser(payload: any): User | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const anniversaryDate =
+    typeof payload.anniversaryDate === 'string'
+      ? new Date(payload.anniversaryDate).toISOString()
+      : '2023-12-24T00:00:00.000Z';
+  return {
+    id: payload.id ?? mockUser.id,
+    name: payload.name ?? mockUser.name,
+    partnerName: payload.partnerName ?? mockUser.partnerName,
+    anniversaryDate,
+    avatarUrl: payload.avatarUrl ?? mockUser.avatarUrl,
+    partnerAvatarUrl: payload.partnerAvatarUrl ?? mockUser.partnerAvatarUrl,
+    timerVersion:
+      typeof payload.timerVersion === 'number' ? payload.timerVersion : 0,
+  };
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -23,13 +41,15 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // 1. Try Backend API (Neon PostgreSQL Cloud DB) first
     try {
       const res = await apiClient.post('/auth/login', { passcode: inputClean });
-      if (res.data?.data?.accessToken) {
+      const data = res.data?.data;
+      if (data?.accessToken) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('ourspace_auth', 'true');
-          localStorage.setItem('ourspace_token', res.data.data.accessToken);
+          localStorage.setItem('ourspace_token', data.accessToken);
           localStorage.setItem('ourspace_magic_phrase', inputClean);
         }
-        set({ isAuthenticated: true, user: res.data.data.user || mockUser, magicPhrase: inputClean });
+        const safeUser = extractUser(data.user) ?? mockUser;
+        set({ isAuthenticated: true, user: safeUser, magicPhrase: inputClean });
         return true;
       }
     } catch (e) {
@@ -57,21 +77,37 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (typeof window !== 'undefined') {
       localStorage.removeItem('ourspace_auth');
       localStorage.removeItem('ourspace_token');
+      localStorage.removeItem('ourspace_app_data');
+      localStorage.removeItem('ourspace_anniversary_date');
+      localStorage.removeItem('ourspace_avatar_kien');
+      localStorage.removeItem('ourspace_avatar_tra');
     }
     set({ isAuthenticated: false, user: null });
   },
-  checkSession: () => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('ourspace_auth');
-      const storedPhrase = localStorage.getItem('ourspace_magic_phrase');
-      if (storedPhrase) {
-        set({ magicPhrase: storedPhrase });
-      }
-      if (stored === 'true') {
-        set({ isAuthenticated: true, user: mockUser });
-      } else {
-        set({ isAuthenticated: false, user: null });
-      }
+  checkSession: async () => {
+    if (typeof window === 'undefined') {
+      set({ isAuthenticated: false, user: null });
+      return;
+    }
+    const stored = localStorage.getItem('ourspace_auth');
+    const storedPhrase = localStorage.getItem('ourspace_magic_phrase');
+    if (storedPhrase) {
+      set({ magicPhrase: storedPhrase });
+    }
+
+    if (stored !== 'true') {
+      set({ isAuthenticated: false, user: null });
+      return;
+    }
+
+    // Try to refresh from server so anniversary/avatar reflect backend state
+    try {
+      const res = await apiClient.get('/auth/me');
+      const user = extractUser(res.data?.data) ?? mockUser;
+      set({ isAuthenticated: true, user });
+    } catch (err) {
+      console.warn('Failed to refresh /auth/me, keeping offline session:', err);
+      set({ isAuthenticated: true, user: mockUser });
     }
   },
   setMagicPhrase: async (newPhrase: string) => {

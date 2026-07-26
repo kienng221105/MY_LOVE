@@ -1,9 +1,10 @@
 'use client';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import { useCountdown } from '@/hooks/useCountdown';
+import { useSyncedTimer } from '@/hooks/useSyncedTimer';
 import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { AvatarCropModal } from '@/components/common/AvatarCropModal';
 import { fileToBase64 } from '@/utils/file';
 import Link from 'next/link';
@@ -14,11 +15,13 @@ export default function HomePage() {
   const { user } = useAuthStore();
   const { photos, letters, diaryEntries } = useDataStore();
   const { openUploadModal, openWriteLetter, openCreateDiary } = useDialogStore();
+  const { showToast } = useNotificationStore();
 
-  // Anniversary date from localStorage or default
-  const defaultDate = user?.anniversaryDate || '2023-12-24';
-  const [anniversaryDate, setAnniversaryDate] = useState(defaultDate);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const { days, hours, minutes, seconds, isLoading, error, reset } =
+    useSyncedTimer();
 
   // Avatar state
   const [kienAvatar, setKienAvatar] = useState(user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150');
@@ -30,27 +33,40 @@ export default function HomePage() {
   const traFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('ourspace_anniversary_date');
-      if (stored) setAnniversaryDate(stored);
+    if (typeof window === 'undefined') return;
+    // Purge the legacy local anniversary override so the server value is authoritative
+    localStorage.removeItem('ourspace_anniversary_date');
 
-      const savedKien = localStorage.getItem('ourspace_avatar_kien');
-      if (savedKien) setKienAvatar(savedKien);
+    const savedKien = localStorage.getItem('ourspace_avatar_kien');
+    if (savedKien) setKienAvatar(savedKien);
 
-      const savedTra = localStorage.getItem('ourspace_avatar_tra');
-      if (savedTra) setTraAvatar(savedTra);
-    }
+    const savedTra = localStorage.getItem('ourspace_avatar_tra');
+    if (savedTra) setTraAvatar(savedTra);
   }, []);
 
-  const { days, hours, minutes, seconds } = useCountdown(anniversaryDate);
+  useEffect(() => {
+    if (user?.avatarUrl) setKienAvatar(user.avatarUrl);
+  }, [user?.avatarUrl]);
 
-  const handleResetConfirm = () => {
-    const now = new Date().toISOString(); // Full timestamp for accurate reset
-    setAnniversaryDate(now);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ourspace_anniversary_date', now);
+  useEffect(() => {
+    if (user?.partnerAvatarUrl) setTraAvatar(user.partnerAvatarUrl);
+  }, [user?.partnerAvatarUrl]);
+
+  useEffect(() => {
+    if (error) showToast(error, 'error');
+  }, [error, showToast]);
+
+  const handleResetConfirm = async () => {
+    setIsResetting(true);
+    try {
+      await reset();
+      showToast('Đã đặt lại thời gian yêu nhau từ phía máy chủ 💖', 'success');
+      setShowResetConfirm(false);
+    } catch (err: any) {
+      showToast(err?.message || 'Đặt lại thất bại, vui lòng thử lại 💔', 'error');
+    } finally {
+      setIsResetting(false);
     }
-    setShowResetConfirm(false);
   };
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'kien' | 'tra') => {
@@ -117,15 +133,17 @@ export default function HomePage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowResetConfirm(false)}
-                  className="flex-1 py-3 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-heading font-bold text-sm transition-all active:scale-95"
+                  disabled={isResetting}
+                  className="flex-1 py-3 rounded-2xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-heading font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
                 >
                   Thôi, không reset 💕
                 </button>
                 <button
                   onClick={handleResetConfirm}
-                  className="flex-1 py-3 rounded-2xl bg-error hover:bg-error/90 text-on-error font-heading font-bold text-sm transition-all active:scale-95 shadow-lg"
+                  disabled={isResetting}
+                  className="flex-1 py-3 rounded-2xl bg-error hover:bg-error/90 text-on-error font-heading font-bold text-sm transition-all active:scale-95 shadow-lg disabled:opacity-50"
                 >
-                  Chắc chắn reset
+                  {isResetting ? 'Đang đặt lại...' : 'Chắc chắn reset'}
                 </button>
               </div>
             </motion.div>
@@ -212,8 +230,9 @@ export default function HomePage() {
               </p>
               <button
                 onClick={() => setShowResetConfirm(true)}
+                disabled={isLoading || isResetting}
                 title="Đặt lại thời gian bên nhau"
-                className="w-7 h-7 rounded-full bg-surface-container-high hover:bg-error/10 text-outline hover:text-error flex items-center justify-center transition-all active:scale-90"
+                className="w-7 h-7 rounded-full bg-surface-container-high hover:bg-error/10 text-outline hover:text-error flex items-center justify-center transition-all active:scale-90 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[16px]">restart_alt</span>
               </button>

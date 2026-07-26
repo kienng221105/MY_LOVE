@@ -3,6 +3,29 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { TimerDto } from './dto/timer.dto';
+
+export interface SafeUser {
+  id: string;
+  name: string;
+  partnerName: string;
+  anniversaryDate: string;
+  avatarUrl?: string | null;
+  partnerAvatarUrl?: string | null;
+  timerVersion: number;
+}
+
+function toSafeUser(user: any): SafeUser {
+  return {
+    id: user.id,
+    name: user.name,
+    partnerName: user.partnerName,
+    anniversaryDate: new Date(user.anniversaryDate).toISOString(),
+    avatarUrl: user.avatarUrl ?? null,
+    partnerAvatarUrl: user.partnerAvatarUrl ?? null,
+    timerVersion: typeof user.timerVersion === 'number' ? user.timerVersion : 0,
+  };
+}
 
 @Injectable()
 export class AuthService {
@@ -59,16 +82,45 @@ export class AuthService {
       message: 'Đăng nhập thành công! Chào mừng hai đứa 💖',
       data: {
         accessToken,
-        user: {
-          id: user.id,
-          name: user.name,
-          partnerName: user.partnerName,
-          anniversaryDate: user.anniversaryDate,
-          avatarUrl: user.avatarUrl,
-          partnerAvatarUrl: user.partnerAvatarUrl,
-        },
+        user: toSafeUser(user),
       },
     };
+  }
+
+  async getTimer(userId: string): Promise<TimerDto> {
+    const user = await this.getUserById(userId);
+    const startAt = new Date(user.anniversaryDate).toISOString();
+    return {
+      startAt,
+      serverNow: new Date().toISOString(),
+      version: typeof user.timerVersion === 'number' ? user.timerVersion : 0,
+      updatedAt: startAt,
+    };
+  }
+
+  async resetTimer(userId: string): Promise<TimerDto> {
+    const user = await this.getUserById(userId);
+    const nextVersion = (user.timerVersion ?? 0) + 1;
+    const now = new Date();
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { anniversaryDate: now, timerVersion: nextVersion },
+    });
+    const startAt = new Date(updated.anniversaryDate).toISOString();
+    return {
+      startAt,
+      serverNow: new Date().toISOString(),
+      version: updated.timerVersion,
+      updatedAt: startAt,
+    };
+  }
+
+  private async getUserById(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new UnauthorizedException('Không tìm thấy tài khoản. Vui lòng đăng nhập lại.');
+    }
+    return user;
   }
 
   async changePassword(changePasswordDto: ChangePasswordDto) {

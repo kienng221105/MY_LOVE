@@ -20,7 +20,7 @@ interface DataStore {
   deletePhoto: (id: string) => Promise<void>;
 
   addMemory: (memory: Omit<MemoryMilestone, 'id'>) => Promise<void>;
-  toggleFavoriteMemory: (id: string) => void;
+  toggleFavoriteMemory: (id: string) => Promise<void>;
 
   addLetter: (letter: Omit<LoveLetter, 'id'>) => Promise<void>;
   markLetterRead: (id: string) => Promise<void>;
@@ -42,44 +42,32 @@ export const useDataStore = create<DataStore>((set, get) => ({
   diaryEntries: [],
 
   initData: async () => {
-    // Fetch directly from Neon Database Cloud API (Single Source of Truth)
-    try {
-      const [apiPhotos, apiMemories, apiLetters, apiDiary] = await Promise.all([
-        GalleryService.getPhotos(),
-        MemoriesService.getMemories(),
-        LettersService.getLetters(),
-        DiaryService.getEntries(),
-      ]);
+    const tasks = await Promise.allSettled([
+      GalleryService.getPhotos(),
+      MemoriesService.getMemories(),
+      LettersService.getLetters(),
+      DiaryService.getEntries(),
+    ]);
 
-      set({
-        photos: apiPhotos,
-        memories: apiMemories,
-        letters: apiLetters,
-        diaryEntries: apiDiary,
-      });
+    const [photosResult, memoriesResult, lettersResult, diaryResult] = tasks;
 
-      saveToStorage({
-        photos: apiPhotos,
-        memories: apiMemories,
-        letters: apiLetters,
-        diaryEntries: apiDiary,
-      });
-    } catch (e) {
-      console.warn('Backend API offline, falling back to LocalStorage');
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            set({
-              photos: parsed.photos || [],
-              memories: parsed.memories || [],
-              letters: parsed.letters || [],
-              diaryEntries: parsed.diaryEntries || [],
-            });
-          } catch (err) {}
-        }
-      }
+    const fallback = readCacheFromStorage();
+    const photos = pickValue(photosResult, fallback.photos);
+    const memories = pickValue(memoriesResult, fallback.memories);
+    const letters = pickValue(lettersResult, fallback.letters);
+    const diaryEntries = pickValue(diaryResult, fallback.diaryEntries);
+
+    set({ photos, memories, letters, diaryEntries });
+    saveToStorage({ photos, memories, letters, diaryEntries });
+
+    const failures = tasks
+      .map((task, idx) => ({ task, idx }))
+      .filter(({ task }) => task.status === 'rejected')
+      .map(({ idx }) => idx);
+    if (failures.length > 0) {
+      console.warn(
+        `Một số API không phản hồi (${failures.join(', ')}); đang dùng cache cũ.`
+      );
     }
   },
 
@@ -100,12 +88,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   addPhoto: async (photoData) => {
-    const apiResult = await GalleryService.addPhoto(photoData);
-    if (apiResult) {
-      const updated = [apiResult, ...get().photos];
-      set({ photos: updated });
-      saveToStorage(get());
-    }
+    const created = await GalleryService.addPhoto(photoData);
+    const updated = [created, ...get().photos];
+    set({ photos: updated });
+    saveToStorage(get());
   },
 
   deletePhoto: async (id) => {
@@ -116,56 +102,112 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   addMemory: async (memoryData) => {
-    const apiResult = await MemoriesService.addMemory(memoryData);
-    if (apiResult) {
-      const updated = [apiResult, ...get().memories];
-      set({ memories: updated });
-      saveToStorage(get());
-    }
+    const created = await MemoriesService.addMemory(memoryData);
+    const updated = [created, ...get().memories];
+    set({ memories: updated });
+    saveToStorage(get());
   },
 
-  toggleFavoriteMemory: (id) => {
+  toggleFavoriteMemory: async (id) => {
+    const target = get().memories.find((m) => m.id === id);
+    if (!target) return;
     const updated = get().memories.map((m) =>
       m.id === id ? { ...m, isFavorite: !m.isFavorite } : m
     );
     set({ memories: updated });
     saveToStorage(get());
-  },
-
-  addLetter: async (letterData) => {
-    const apiResult = await LettersService.createLetter(letterData);
-    if (apiResult) {
-      const updated = [apiResult, ...get().letters];
-      set({ letters: updated });
+    try {
+      await MemoriesService.addMemory({ ...target, isFavorite: !target.isFavorite });
+    } catch (err) {
+      console.warn('Failed to sync memory favorite, rolling back', err);
+      set({
+        memories: get().memories.map((m) =>
+          m.id === id ? target : m
+        ),
+      });
       saveToStorage(get());
+      throw err;
     }
   },
 
+  addLetter: async (letterData) => {
+    const created = await LettersService.createLetter(letterData);
+    const updated = [created, ...get().letters];
+    set({ letters: updated });
+    saveToStorage(get());
+  },
+
   markLetterRead: async (id) => {
+    const previous = get().letters.find((l) => l.id === id);
     const updated = get().letters.map((l) =>
       l.id === id ? { ...l, isRead: true } : l
     );
     set({ letters: updated });
     saveToStorage(get());
-    await LettersService.markAsRead(id);
-  },
-
-  addDiaryEntry: async (entryData) => {
-    const apiResult = await DiaryService.createEntry(entryData);
-    if (apiResult) {
-      const updated = [apiResult, ...get().diaryEntries];
-      set({ diaryEntries: updated });
-      saveToStorage(get());
+    try {
+      await LettersService.markAsRead(id);
+    } catch (err) {
+      console.warn('Failed to sync mark-as-read, rolling back', err);
+      if (previous) {
+        set({
+          letters: get().letters.map((l) =>
+            l.id === id ? previous : l
+          ),
+        });
+        saveToStorage(get());
+      }
+      throw err;
     }
   },
 
-  deleteDiaryEntry: async (id) => {
-    const updated = get().diaryEntries.filter((d) => d.id !== id);
+  addDiaryEntry: async (entryData) => {
+    const created = await DiaryService.createEntry(entryData);
+    const updated = [created, ...get().diaryEntries];
     set({ diaryEntries: updated });
     saveToStorage(get());
-    await DiaryService.deleteEntry(id);
+  },
+
+  deleteDiaryEntry: async (id) => {
+    const previous = get().diaryEntries;
+    const updated = previous.filter((d) => d.id !== id);
+    set({ diaryEntries: updated });
+    saveToStorage(get());
+    try {
+      await DiaryService.deleteEntry(id);
+    } catch (err) {
+      console.warn('Failed to delete diary entry, rolling back', err);
+      set({ diaryEntries: previous });
+      saveToStorage(get());
+      throw err;
+    }
   },
 }));
+
+function pickValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
+  if (result.status === 'fulfilled') return result.value;
+  return fallback;
+}
+
+function readCacheFromStorage() {
+  if (typeof window === 'undefined') {
+    return { photos: [], memories: [], letters: [], diaryEntries: [] };
+  }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return { photos: [], memories: [], letters: [], diaryEntries: [] };
+    }
+    const parsed = JSON.parse(stored);
+    return {
+      photos: parsed.photos || [],
+      memories: parsed.memories || [],
+      letters: parsed.letters || [],
+      diaryEntries: parsed.diaryEntries || [],
+    };
+  } catch {
+    return { photos: [], memories: [], letters: [], diaryEntries: [] };
+  }
+}
 
 function saveToStorage(state: {
   photos: Photo[];
@@ -174,14 +216,18 @@ function saveToStorage(state: {
   diaryEntries: DiaryEntry[];
 }) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        photos: state.photos,
-        memories: state.memories,
-        letters: state.letters,
-        diaryEntries: state.diaryEntries,
-      })
-    );
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          photos: state.photos,
+          memories: state.memories,
+          letters: state.letters,
+          diaryEntries: state.diaryEntries,
+        })
+      );
+    } catch (err) {
+      console.warn('Failed to persist app cache', err);
+    }
   }
 }

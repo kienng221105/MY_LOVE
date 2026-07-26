@@ -19,34 +19,50 @@ export default function LettersPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [openDate, setOpenDate] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleOpenLetter = (letter: LoveLetter) => {
     setActiveLetter(letter);
     if (!letter.isRead) {
-      markLetterRead(letter.id);
+      markLetterRead(letter.id).catch((err: any) => {
+        showToast(
+          err?.message || 'Không đánh dấu đã đọc được, sẽ thử lại sau',
+          'error'
+        );
+      });
     }
   };
 
-  const handleWriteSubmit = (e: React.FormEvent) => {
+  const handleWriteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content) return;
+    if (!content.trim() || isSaving) return;
 
-    addLetter({
-      sender,
-      recipient: sender === 'Kiên' ? 'Trà' : 'Kiên',
-      title,
-      content,
-      sentDate: new Date().toISOString().split('T')[0],
-      openDate: openDate || undefined,
-      isRead: false,
-      bgStyle: 'pink',
-    });
+    setIsSaving(true);
+    try {
+      await addLetter({
+        sender,
+        recipient: sender === 'Kiên' ? 'Trà' : 'Kiên',
+        title: title.trim(),
+        content,
+        sentDate: new Date().toISOString(),
+        openDate: openDate || undefined,
+        isRead: false,
+        bgStyle: 'pink',
+      });
 
-    showToast('Đã gửi bức thư tình ngọt ngào 💌');
-    closeWriteLetter();
-    setTitle('');
-    setContent('');
-    setOpenDate('');
+      showToast('Đã gửi bức thư tình ngọt ngào 💌');
+      closeWriteLetter();
+      setTitle('');
+      setContent('');
+      setOpenDate('');
+    } catch (err: any) {
+      showToast(
+        err?.message || 'Không gửi được thư, vui lòng thử lại 💔',
+        'error'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -246,15 +262,17 @@ export default function LettersPage() {
                   <button
                     type="button"
                     onClick={closeWriteLetter}
-                    className="px-5 py-2.5 rounded-full font-heading font-bold text-xs text-on-surface-variant hover:bg-surface-container"
+                    disabled={isSaving}
+                    className="px-5 py-2.5 rounded-full font-heading font-bold text-xs text-on-surface-variant hover:bg-surface-container disabled:opacity-50"
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform"
+                    disabled={isSaving}
+                    className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-heading font-bold text-xs shadow-md hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100"
                   >
-                    Gửi thư tình
+                    {isSaving ? 'Đang gửi...' : 'Gửi thư tình'}
                   </button>
                 </div>
               </form>
