@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreatePhotoDto {
   @ApiProperty({ description: 'URL ảnh', example: '/trang_chu.png' })
@@ -31,4 +31,9 @@ export class CreatePhotoDto {
   @IsOptional()
   @IsString()
   albumId?: string;
+
+  @ApiPropertyOptional({ description: 'ID bức ảnh', example: 'photo_123' })
+  @IsOptional()
+  @IsString()
+  id?: string;
 }

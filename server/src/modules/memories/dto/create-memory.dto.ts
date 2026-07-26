@@ -36,4 +36,9 @@ export class CreateMemoryDto {
   @IsOptional()
   @IsBoolean()
   isFavorite?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID cột mốc', example: 'memory_123' })
+  @IsOptional()
+  @IsString()
+  id?: string;
 }

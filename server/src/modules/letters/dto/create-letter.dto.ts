@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class CreateLetterDto {
   @ApiProperty({ description: 'Người gửi', example: 'Kiên' })
@@ -22,6 +22,11 @@ export class CreateLetterDto {
   @IsNotEmpty()
   content: string;
 
+  @ApiPropertyOptional({ description: 'Ngày gửi lá thư', example: '2026-07-26' })
+  @IsOptional()
+  @IsString()
+  sentDate?: string;
+
   @ApiPropertyOptional({ description: 'Ngày cho phép mở thư (Scheduled)', example: '2026-12-24' })
   @IsOptional()
   @IsString()
@@ -31,4 +36,19 @@ export class CreateLetterDto {
   @IsOptional()
   @IsString()
   bgStyle?: string;
+
+  @ApiPropertyOptional({ description: 'Trạng thái đã đọc', example: false })
+  @IsOptional()
+  @IsBoolean()
+  isRead?: boolean;
+
+  @ApiPropertyOptional({ description: 'Trạng thái yêu thích', example: false })
+  @IsOptional()
+  @IsBoolean()
+  isFavorite?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID lá thư', example: 'letter_123' })
+  @IsOptional()
+  @IsString()
+  id?: string;
 }

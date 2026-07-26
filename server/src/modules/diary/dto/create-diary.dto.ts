@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsArray } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsArray, IsBoolean } from 'class-validator';
 
 export class CreateDiaryDto {
   @ApiProperty({ description: 'Tiêu đề nhật ký', example: 'Một buổi tối bình yên' })
@@ -22,6 +22,11 @@ export class CreateDiaryDto {
   @IsNotEmpty()
   weather: string;
 
+  @ApiPropertyOptional({ description: 'Ngày bài viết', example: '2026-07-26' })
+  @IsOptional()
+  @IsString()
+  date?: string;
+
   @ApiPropertyOptional({ description: 'Tác giả (Kien / Love)', example: 'Kien' })
   @IsOptional()
   @IsString()
@@ -31,4 +36,14 @@ export class CreateDiaryDto {
   @IsOptional()
   @IsArray()
   imageUrls?: string[];
+
+  @ApiPropertyOptional({ description: 'Trạng thái bản nháp', example: false })
+  @IsOptional()
+  @IsBoolean()
+  isDraft?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID bài viết', example: 'diary_123' })
+  @IsOptional()
+  @IsString()
+  id?: string;
 }
