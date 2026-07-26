@@ -15,6 +15,11 @@
 # Production
 /build
 
+# Standalone design reference files & screenshots in root directory (not needed for runtime)
+/*.html
+/*.png
+/design_system.md
+
 # Misc
 .DS_Store
 *.pem
@@ -35,6 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Server (backend - not deployed to Vercel)
+# Server (backend build artifacts)
 /server/dist
 /server/uploads
