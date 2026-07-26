@@ -175,27 +175,29 @@ export const useDataStore = create<DataStore>((set, get) => ({
       l.id === id ? { ...l, reactions: summary } : l
     );
     set({ letters: updated });
-    saveToStorage(get());
+    // Lưu cache đã debounce; nếu muốn an toàn hơn cũng có thể bỏ qua vì
+    // toggleReaction API đã đảm bảo state DB — cache sẽ đồng bộ khi init/refresh
+    schedulePersist(get());
   },
 
   addDiaryEntry: async (entryData) => {
     const created = await DiaryService.createEntry(entryData, getCurrentMe());
     const updated = [created, ...get().diaryEntries];
     set({ diaryEntries: updated });
-    saveToStorage(get());
+    schedulePersist(get());
   },
 
   deleteDiaryEntry: async (id) => {
     const previous = get().diaryEntries;
     const updated = previous.filter((d) => d.id !== id);
     set({ diaryEntries: updated });
-    saveToStorage(get());
+    schedulePersist(get());
     try {
       await DiaryService.deleteEntry(id);
     } catch (err) {
       console.warn('Failed to delete diary entry, rolling back', err);
       set({ diaryEntries: previous });
-      saveToStorage(get());
+      schedulePersist(get());
       throw err;
     }
   },
@@ -205,9 +207,32 @@ export const useDataStore = create<DataStore>((set, get) => ({
       d.id === id ? { ...d, reactions: summary } : d
     );
     set({ diaryEntries: updated });
-    saveToStorage(get());
+    schedulePersist(get());
   },
 }));
+
+/** Debounce persist để tránh lag khi toggle reaction liên tục (đặc biệt trên mobile) */
+let persistTimer: number | null = null;
+function schedulePersist(state: ReturnType<typeof useDataStore.getState>) {
+  if (typeof window === 'undefined') return;
+  if (persistTimer !== null) clearTimeout(persistTimer);
+  persistTimer = window.setTimeout(() => {
+    persistTimer = null;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          photos: state.photos,
+          memories: state.memories,
+          letters: state.letters,
+          diaryEntries: state.diaryEntries,
+        })
+      );
+    } catch (err) {
+      console.warn('Failed to persist app cache', err);
+    }
+  }, 600);
+}
 
 function getCurrentMe(): IdentityId {
   // Ưu tiên IdentityStore (sync trong memory)

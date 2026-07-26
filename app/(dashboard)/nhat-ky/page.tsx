@@ -6,6 +6,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useReactionContext } from '@/hooks/useReactionContext';
+import { useReactionSync } from '@/hooks/useReactionSync';
 import { ReactionPicker } from '@/components/common/ReactionPicker';
 import { ImageLightbox } from '@/components/common/ImageLightbox';
 import { uploadImageFile, isHttpUpstreamUrl } from '@/utils/file';
@@ -47,6 +48,15 @@ export default function DiaryPage() {
   useEffect(() => {
     setAuthor(me);
   }, [me]);
+
+  // Polling reactions mỗi 8s — để 2 người thấy cảm xúc của nhau realtime
+  useReactionSync({
+    targetType: 'DIARY',
+    targetIds: diaryEntries.map((e) => e.id),
+    me,
+    onSync: (id, summary) => updateDiaryReactions(id, summary),
+    intervalMs: 8000,
+  });
 
   // Load draft from LocalStorage on mount
   useEffect(() => {

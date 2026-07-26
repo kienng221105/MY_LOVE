@@ -59,4 +59,22 @@ export class ReactionsService {
       unwrapError(err, 'Không tải được cảm xúc');
     }
   }
+
+  /** Lấy summaries cho nhiều target cùng lúc (dùng cho polling batch) */
+  static async listForTargets(
+    targetType: ReactionTargetValue,
+    targetIds: string[],
+    me: 'Kien' | 'Love'
+  ): Promise<Record<string, ReactionSummary>> {
+    if (targetIds.length === 0) return {};
+    try {
+      const res = await apiClient.get('/reactions/summaries', {
+        params: { targetType, ids: targetIds.join(','), me },
+      });
+      return res.data?.data ?? {};
+    } catch (err) {
+      // silent fail cho polling
+      return {};
+    }
+  }
 }

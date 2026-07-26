@@ -43,7 +43,7 @@ export function ReactionsViewer({
 
   const isCoarse = useIsCoarsePointer();
 
-  /* Tính toán vị trí popover khi mở — fixed positioning, clamp vào viewport */
+  /* Tính toán vị trí popover khi mở — fixed positioning */
   useEffect(() => {
     if (!showList) return;
     const btn = document.querySelector(
@@ -51,18 +51,19 @@ export function ReactionsViewer({
     ) as HTMLElement | null;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    const popoverWidth = 280;
+    const popoverWidth = Math.min(280, window.innerWidth - 32);
     const margin = 8;
     const desiredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
     const minLeft = margin;
     const maxLeft = window.innerWidth - popoverWidth - margin;
     const left = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
-    const flipUp = rect.top > 200;
+    const flipUp = rect.top > 220;
     const top = flipUp ? rect.top - 8 : rect.bottom + 8;
     setPopoverPos({ left, top, flipUp });
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [showList]);
 
-  /* Click-outside */
+  /* Click-outside / touch-outside đóng */
   useEffect(() => {
     if (!showList) return;
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -78,6 +79,15 @@ export function ReactionsViewer({
       document.removeEventListener('touchstart', handler);
     };
   }, [showList]);
+
+  /* ESC đóng */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowList(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   if (!summary || summary.total === 0) return null;
 
@@ -96,7 +106,10 @@ export function ReactionsViewer({
             e.stopPropagation();
             setShowList((v) => !v);
           }}
-          onTouchStart={(e) => e.stopPropagation()}
+          onTouchStart={(e) => {
+            /* ngắt ghost click trên mobile */
+            e.stopPropagation();
+          }}
           whileTap={{ scale: 0.95 }}
           style={{
             userSelect: 'none',
@@ -104,22 +117,28 @@ export function ReactionsViewer({
             touchAction: 'manipulation',
             WebkitTouchCallout: 'none',
           }}
-          className={`inline-flex items-center gap-1 select-none ${
-            isCoarse ? 'px-2.5 py-1' : 'px-2 py-0.5'
-          } rounded-full bg-surface-container border border-primary/20 shadow-sm hover:shadow-md transition-all`}
+          className={`inline-flex items-center gap-1 select-none rounded-full bg-surface-container border border-primary/20 shadow-sm hover:shadow-md transition-all ${
+            isCoarse ? 'min-h-[36px] px-3 py-1.5' : 'px-2 py-0.5'
+          }`}
           aria-label="Xem ai đã thả cảm xúc"
         >
           <span className="flex -space-x-1">
             {activeTypes.slice(0, 3).map((t) => (
               <span
                 key={t}
-                className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-container-lowest border border-white text-[11px] leading-none"
+                className={`inline-flex items-center justify-center rounded-full bg-surface-container-lowest border border-white text-[11px] leading-none ${
+                  isCoarse ? 'w-6 h-6' : 'w-5 h-5'
+                }`}
               >
                 {REACTION_META[t].emoji}
               </span>
             ))}
           </span>
-          <span className="font-heading font-bold text-[11px] text-on-surface pl-0.5">
+          <span
+            className={`font-heading font-bold pl-0.5 ${
+              isCoarse ? 'text-sm text-on-surface' : 'text-[11px] text-on-surface'
+            }`}
+          >
             {summary.total}
           </span>
         </motion.button>
@@ -133,6 +152,7 @@ export function ReactionsViewer({
               transition={{ duration: 0.15 }}
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               style={{
                 position: 'fixed',
                 left: popoverPos.left,

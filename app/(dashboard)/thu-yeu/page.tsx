@@ -6,6 +6,7 @@ import { useDialogStore } from '@/store/useDialogStore';
 import { useDataStore } from '@/store/useDataStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useReactionContext } from '@/hooks/useReactionContext';
+import { useReactionSync } from '@/hooks/useReactionSync';
 import { ReactionPicker } from '@/components/common/ReactionPicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/utils/date';
@@ -33,6 +34,15 @@ export default function LettersPage() {
   useEffect(() => {
     setSender(myName);
   }, [myName]);
+
+  // Polling reactions mỗi 8s — để 2 người thấy cảm xúc của nhau realtime
+  useReactionSync({
+    targetType: 'LETTER',
+    targetIds: letters.map((l) => l.id),
+    me,
+    onSync: (id, summary) => updateLetterReactions(id, summary),
+    intervalMs: 8000,
+  });
 
   const filteredLetters = letters.filter((letter) =>
     isDateInRange(letter.sentDate, dateRange)

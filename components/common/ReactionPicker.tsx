@@ -170,19 +170,24 @@ export function ReactionPicker({
       setLocal(res.summary);
       onUpdate?.(res.summary);
       if (res.action !== 'removed') {
+        // Chỉ hiện 1 floating emoji gần nhất trên mobile (giảm render)
         const id = `${Date.now()}-${Math.random()}`;
-        setFloatingEmojis((prev) => [
-          ...prev,
-          { id, emoji: REACTION_META[type].emoji, createdAt: Date.now() },
-        ]);
+        setFloatingEmojis((prev) => {
+          const next = [
+            ...prev,
+            { id, emoji: REACTION_META[type].emoji, createdAt: Date.now() },
+          ];
+          return next.slice(-2); // tối đa 2 cái cùng lúc
+        });
         setTimeout(() => {
           setFloatingEmojis((prev) => prev.filter((e) => e.id !== id));
-        }, 1400);
+        }, 1100);
       }
     } catch (err: any) {
       console.warn('Toggle reaction failed', err);
     } finally {
-      setBusy(false);
+      // Tắt busy nhanh để tương tác kế tiếp không bị khóa
+      setTimeout(() => setBusy(false), 0);
       setIsOpen(false);
       setHoverType(null);
     }
@@ -262,16 +267,18 @@ export function ReactionPicker({
                 key={opt.type}
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   handleToggle(opt.type);
                 }}
                 onTouchStart={(e) => {
+                  /* Giữ trên touch — KHÔNG toggle, chỉ ngắt trigger click tiếp theo */
                   e.stopPropagation();
-                  handleToggle(opt.type);
                 }}
                 onMouseEnter={() => setHoverType(opt.type)}
                 onMouseLeave={() => setHoverType(null)}
                 disabled={busy}
-                animate={{
+                /* Mobile: bỏ animate theo hover để tránh layout shift/lag */
+                animate={isCoarse ? false : {
                   y: isHover ? -12 : 0,
                   scale: isHover ? 1.35 : 1,
                 }}
